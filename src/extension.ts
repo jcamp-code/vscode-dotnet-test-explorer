@@ -36,7 +36,30 @@ export function activate(context: vscode.ExtensionContext) {
     const leftClickTest = new LeftClickTest();
     const appInsights = new AppInsights(testCommands, testDirectories);
 
-    const controller = vscode.tests.createTestController("helloWorldTests", "Hello World Tests");
+    const controller = vscode.tests.createTestController("dotnet-test-explorer", "Dot Net Tests");
+    // https://github.com/microsoft/vscode/blob/b7d5b65a13299083e92bca91be8fa1289e95d5c1/src/vs/workbench/contrib/testing/browser/testing.contribution.ts
+    // https://github.com/microsoft/vscode/blob/c11dabf9ce669f599a18d7485d397834abc1c8e1/src/vs/workbench/api/common/extHostTesting.ts - controller
+    const commandHandler = async (extId: string) => {
+        try {
+            const parts = extId.split("\0");
+
+            let current = controller.items.get(parts[1]);
+
+            for (let x = 2; x < parts.length; x++) {
+                current = current.children.get(parts[x]);
+            }
+
+            // should be left with desired testitem as current
+            if (current && current.id) {
+                vscode.commands.executeCommand("dotnet-test-explorer.gotoTest",
+                    {fqn: Utility.getFqnTestName(current.id).replace("+",".")}
+                );
+            }
+        } catch {}
+    };
+    context.subscriptions.push(
+        vscode.commands.registerCommand("vscode.revealTest", commandHandler)
+    );
 
     const env = {
         ...process.env,
@@ -71,7 +94,17 @@ export function activate(context: vscode.ExtensionContext) {
                     treeNode.children.add(generateNode(subTree));
                 }
                 for (const test of tree.tests) {
-                    treeNode.children.add(controller.createTestItem(tree.fullName + "." + test, test));
+                        const _fqn = Utility.getFqnTestName(
+                            tree.fullName + "." + test
+                        ).replace("+", ".");
+                        treeNode.children.add(
+                            controller.createTestItem(
+                                tree.fullName + "." + test,
+                                test,
+                                // vscode.Uri.parse(`command:dotnet-test-explorer.newGotoTest`) // doesn't work but need a uri to get icon to show, test extension expects a file / folder uri
+                                vscode.Uri.parse(`vscdnte:${_fqn}`)
+                            )
+                        );
                 }
 
                 return treeNode;
