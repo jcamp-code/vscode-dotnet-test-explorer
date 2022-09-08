@@ -1,17 +1,14 @@
 "use strict";
 
-import { execFile } from "child_process";
 import * as vscode from "vscode";
 import { AppInsights } from "./appInsights";
 import { AppInsightsClient } from "./appInsightsClient";
-import { buildTree, ITestTreeNode, mergeSingleItemTrees } from "./buildTree";
 import { DotnetTestExplorer } from "./dotnetTestExplorer";
 import { Executor } from "./executor";
 import { FindTestInContext } from "./findTestInContext";
 import { GotoTest } from "./gotoTest";
 import { LeftClickTest } from "./leftClickTest";
 import { Logger } from "./logger";
-import { parseTestName } from "./parseTestName";
 import { Problems } from "./problems";
 import { StatusBar } from "./statusBar";
 import { TestCommands } from "./testCommands";
@@ -33,68 +30,14 @@ export function activate(context: vscode.ExtensionContext) {
     const leftClickTest = new LeftClickTest();
     const appInsights = new AppInsights(testCommands, testDirectories);
 
-    const env = {
-        ...process.env,
-        DOTNET_CLI_UI_LANGUAGE: "en",
-        VSTEST_HOST_DEBUG: "0",
-    };
-
-    const controller = createTestController(context);
-
-    for (const folder of vscode.workspace.workspaceFolders) {
-        const options = {
-            cwd: folder.uri.fsPath,
-            env
-        }
-        execFile("dotnet", ["test", "--list-tests", "--verbosity=quiet"], options, (error, stdout, stderr) => {
-            console.log(stdout);
-            if (error) {
-                console.error(error);
-                // some error happened
-                // TODO: log it (properly)
-                return;
-            }
-
-            const lines = stdout.split(/\n\r?|\r/);
-            const rawTests = lines.filter(line => /^    /.test(line));
-            const parsedTestNames = rawTests.map(x => parseTestName(x.trim()));
-            // const rootTree = mergeSingleItemTrees(buildTree(parsedTestNames));
-            const rootTree = buildTree(parsedTestNames);
-
-            // convert the tree into tests
-            const generateNode = (tree: ITestTreeNode) => {
-                const treeNode = controller.createTestItem(tree.fullName, tree.name);
-                for (const subTree of tree.subTrees.values()) {
-                    treeNode.children.add(generateNode(subTree));
-                }
-                for (const test of tree.tests) {
-                        const _fqn = Utility.getFqnTestName(
-                            tree.fullName + "." + test
-                        ).replace("+", ".");
-                        treeNode.children.add(
-                            controller.createTestItem(
-                                tree.fullName + "." + test,
-                                test,
-                                // vscode.Uri.parse(`command:dotnet-test-explorer.newGotoTest`) // doesn't work but need a uri to get icon to show, test extension expects a file / folder uri
-                                vscode.Uri.parse(`vscdnte:${_fqn}`)
-                            )
-                        );
-                }
-
-                return treeNode;
-            }
-
-            const rootNode = generateNode(rootTree);
-            rootNode.label = folder.name;
-            controller.items.add(rootNode);
-        });
-    }
-
     Logger.Log("Starting extension");
 
     testDirectories.parseTestDirectories();
 
+    const controller = createTestController(context)
+    controller.refreshHandler(null)
     context.subscriptions.push(controller);
+
     context.subscriptions.push(problems);
     context.subscriptions.push(statusBar);
     context.subscriptions.push(testCommands);
