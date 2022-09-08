@@ -276,7 +276,7 @@ export class TestCommands implements Disposable {
 
                             Logger.Log(stdout, "Test Explorer (Test runner output)");
 
-                            resolve([]);
+                            resolve();
                         }, testDirectoryPath, true);
                     } else {
                         return Executor.debug(command, (err, stdout: string) => {
@@ -288,7 +288,7 @@ export class TestCommands implements Disposable {
 
                             Logger.Log(stdout, "Test Explorer (Test runner output)");
 
-                            resolve([]);
+                            resolve();
                         }, testDirectoryPath, true);
                     }
 
