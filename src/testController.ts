@@ -6,6 +6,7 @@ import * as vscode from 'vscode'
 import { Utility } from './utility'
 import { parseTestName } from './parseTestName'
 import { parseResults } from './testResultsFile'
+import { buildTree, ITestTreeNode } from './buildTree'
 
 export function createTestController(context: vscode.ExtensionContext): vscode.TestController {
   const controller = vscode.tests.createTestController('dotnet-test-explorer', 'Dot Net Tests')
@@ -30,6 +31,67 @@ export function createTestController(context: vscode.ExtensionContext): vscode.T
     } catch {}
   }
   context.subscriptions.push(vscode.commands.registerCommand('vscode.revealTest', commandHandler))
+  
+  controller.refreshHandler = async (token) => {
+    const env = {
+      ...process.env,
+      DOTNET_CLI_UI_LANGUAGE: 'en',
+      VSTEST_HOST_DEBUG: '0',
+    }
+
+    for (const folder of vscode.workspace.workspaceFolders) {
+      const options = {
+        cwd: folder.uri.fsPath,
+        env,
+      }
+      execFile(
+        'dotnet',
+        ['test', '--list-tests', '--verbosity=quiet'],
+        options,
+        (error, stdout, stderr) => {
+          console.log(stdout)
+          if (error) {
+            console.error(error)
+            // some error happened
+            // TODO: log it (properly)
+            return
+          }
+
+          const lines = stdout.split(/\n\r?|\r/)
+          const rawTests = lines.filter((line) => /^    /.test(line))
+          const parsedTestNames = rawTests.map((x) => parseTestName(x.trim()))
+          // const rootTree = mergeSingleItemTrees(buildTree(parsedTestNames));
+          const rootTree = buildTree(parsedTestNames)
+
+          // convert the tree into tests
+          const generateNode = (tree: ITestTreeNode) => {
+            const treeNode = controller.createTestItem(tree.fullName, tree.name)
+            for (const subTree of tree.subTrees.values()) {
+              treeNode.children.add(generateNode(subTree))
+            }
+            for (const test of tree.tests) {
+              const _fqn = Utility.getFqnTestName(tree.fullName + '.' + test).replace('+', '.')
+              treeNode.children.add(
+                controller.createTestItem(
+                  tree.fullName + '.' + test,
+                  test,
+                  // vscode.Uri.parse(`command:dotnet-test-explorer.newGotoTest`) // doesn't work but need a uri to get icon to show, test extension expects a file / folder uri
+                  vscode.Uri.parse(`vscdnte:${_fqn}`)
+                )
+              )
+            }
+
+            return treeNode
+          }
+
+          const rootNode = generateNode(rootTree)
+          rootNode.label = folder.name
+          controller.items.add(rootNode)
+        }
+      )
+    }
+
+  }
 
   controller.createRunProfile('Run', vscode.TestRunProfileKind.Run, async (request, token) => {
     const run = controller.createTestRun(request, 'My test run', true)
