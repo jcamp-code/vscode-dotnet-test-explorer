@@ -19,7 +19,7 @@ import { TestStatusCodeLensProvider } from "./testStatusCodeLensProvider";
 import { Utility } from "./utility";
 import { Watch } from "./watch";
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     const testDirectories = new TestDirectories();
     const testCommands = new TestCommands(testDirectories);
     const gotoTest = new GotoTest();
@@ -35,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
     testDirectories.parseTestDirectories();
 
     const controller = createTestController(context)
-    controller.refreshHandler(null)
+    await controller.refreshHandler(null)
     context.subscriptions.push(controller);
 
     context.subscriptions.push(problems);
