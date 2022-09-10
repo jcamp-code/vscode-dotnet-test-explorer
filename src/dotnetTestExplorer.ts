@@ -38,8 +38,8 @@ export class DotnetTestExplorer implements TreeDataProvider<TestNode> {
      * This method can cause the project to rebuild or try
      * to do a restore, so it can be very slow.
      */
-    public refreshTestExplorer(): void {
-        this.testCommands.discoverTests();
+    public async refreshTestExplorer() {
+        await this.testCommands.discoverTests();
 
         AppInsightsClient.sendEvent("refreshTestExplorer");
     }
@@ -124,11 +124,13 @@ export class DotnetTestExplorer implements TreeDataProvider<TestNode> {
         return new TestNode(parentNamespace, abstractTree.name, this.testResults, children);
     }
 
+    // change to use settings
     private updateWithDiscoveringTest() {
         this.discoveredTests = null;
         this._onDidChangeTreeData.fire(null);
     }
 
+    // change to use settings
     private updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
         this.testNodes = [];
         this.discoveredTests = [].concat(...results.map((r) => r.testNames));

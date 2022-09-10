@@ -267,6 +267,21 @@
           "type": "boolean",
           "default": false,
           "description": "If true, will discover/build and run test in parallel if you have multiple test projects"
+        },
+        "dotnet-test-explorer.testBrowser": {
+          "type": "string",
+          "default": "original",
+          "enum": [
+            "original",
+            "integrated",
+            "both"
+          ],
+          "enumDescriptions": [
+            "Use the original test browser provided by dotnet-test-explorer",
+            "Experimental: Use the test system integrated into VS Code",
+            "Show both"
+          ],
+          "description": "Choose which test browser to use."
         }
       }
     },

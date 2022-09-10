@@ -42,7 +42,7 @@ export class TestCommands implements Disposable {
         }
     }
 
-    public discoverTests() {
+    public async discoverTests() {
         this.onTestDiscoveryStartedEmitter.fire("");
 
         this.testDirectories.clearTestsForDirectory();
@@ -79,7 +79,7 @@ export class TestCommands implements Disposable {
             }
         };
 
-        runSeqOrAsync();
+        await runSeqOrAsync();
     }
 
     public async discoverTestsInFolder(dir: string): Promise<IDiscoverTestsResult> {
