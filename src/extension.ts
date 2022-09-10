@@ -34,7 +34,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     testDirectories.parseTestDirectories();
 
-    const controller = createTestController(context)
+    const controller = createTestController(context, testCommands, statusBar)
     await controller.refreshHandler(null)
     context.subscriptions.push(controller);
 
@@ -48,12 +48,12 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider("dotnetTestExplorer", dotnetTestExplorer);
     AppInsightsClient.sendEvent("loadExtension");
 
-    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e: vscode.ConfigurationChangeEvent) => {
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
         if (!e.affectsConfiguration("dotnet-test-explorer")) { return; }
 
         if (e.affectsConfiguration("dotnet-test-explorer.testProjectPath")) {
             testDirectories.parseTestDirectories();
-            testCommands.discoverTests();
+            await testCommands.discoverTests();
         }
 
         dotnetTestExplorer._onDidChangeTreeData.fire(null);
@@ -61,7 +61,7 @@ export async function activate(context: vscode.ExtensionContext) {
         Utility.updateCache();
     }));
 
-    testCommands.discoverTests();
+    await testCommands.discoverTests();
 
     const codeLensProvider = new TestStatusCodeLensProvider(testCommands);
     context.subscriptions.push(codeLensProvider);

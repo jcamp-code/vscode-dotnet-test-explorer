@@ -7,6 +7,7 @@ import { IMessage } from "./messages";
 
 export interface IDiscoverTestsResult {
     testNames: string[];
+    folder?: string;
     warningMessage?: IMessage;
 }
 
@@ -16,7 +17,7 @@ export function discoverTests(testDirectoryPath: string, dotnetTestOptions: stri
 
             const testNames = extractTestNames(stdout);
             if (!isMissingFqNames(testNames)) {
-                return { testNames };
+                return { testNames, folder: testDirectoryPath };
             }
 
             const assemblyPaths = extractAssemblyPaths(stdout);
@@ -26,7 +27,7 @@ export function discoverTests(testDirectoryPath: string, dotnetTestOptions: stri
 
             return discoverTestsWithVstest(assemblyPaths, testDirectoryPath)
                 .then((results) => {
-                    return { testNames: results };
+                    return { testNames: results, folder: testDirectoryPath };
                 })
                 .catch((error: Error) => {
                     if (error instanceof ListFqnNotSupportedError) {

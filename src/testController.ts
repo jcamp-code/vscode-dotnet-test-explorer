@@ -7,9 +7,25 @@ import { Utility } from './utility'
 import { parseTestName } from './parseTestName'
 import { parseResults } from './testResultsFile'
 import { buildTree, ITestTreeNode } from './buildTree'
+import { TestCommands } from './testCommands'
+import { IDiscoverTestsResult } from './testDiscovery'
+import { basename } from 'path'
+import { AppInsightsClient } from "./appInsightsClient";
+import { StatusBar } from './statusBar'
 
-export function createTestController(context: vscode.ExtensionContext): vscode.TestController {
-  const controller = vscode.tests.createTestController('dotnet-test-explorer', 'Dot Net Tests')
+export interface TestControllerExtended extends vscode.TestController {
+  _onDidChangeTreeData: vscode.EventEmitter<any>
+  onDidChangeTreeData: vscode.Event<any>
+}
+
+export function createTestController(context: vscode.ExtensionContext, testCommands: TestCommands, statusBar: StatusBar): vscode.TestController {
+
+  const controller = vscode.tests.createTestController('dotnet-test-explorer', 'Dot Net Tests') as TestControllerExtended
+
+  // extend the VSC controller with additional properties
+  controller._onDidChangeTreeData = new vscode.EventEmitter<any>();
+  controller.onDidChangeTreeData = controller._onDidChangeTreeData.event;
+
   // https://github.com/microsoft/vscode/blob/b7d5b65a13299083e92bca91be8fa1289e95d5c1/src/vs/workbench/contrib/testing/browser/testing.contribution.ts
   // https://github.com/microsoft/vscode/blob/c11dabf9ce669f599a18d7485d397834abc1c8e1/src/vs/workbench/api/common/extHostTesting.ts - controller
   const commandHandler = async (extId: string) => {
@@ -32,38 +48,23 @@ export function createTestController(context: vscode.ExtensionContext): vscode.T
   }
   context.subscriptions.push(vscode.commands.registerCommand('vscode.revealTest', commandHandler))
   
-  controller.refreshHandler = async (token) => {
-    const env = {
-      ...process.env,
-      DOTNET_CLI_UI_LANGUAGE: 'en',
-      VSTEST_HOST_DEBUG: '0',
-    }
+   testCommands.onTestDiscoveryFinished(updateWithDiscoveredTests, this);
+   testCommands.onTestDiscoveryStarted(updateWithDiscoveringTest, this);
+  function updateWithDiscoveringTest() {
+  
+    controller.items.replace([]);
+    // update with settings
+    controller._onDidChangeTreeData.fire(null);
+  }
 
-    for (const folder of vscode.workspace.workspaceFolders) {
-      const options = {
-        cwd: folder.uri.fsPath,
-        env,
-      }
-      execFile(
-        'dotnet',
-        ['test', '--list-tests', '--verbosity=quiet'],
-        options,
-        (error, stdout, stderr) => {
-          console.log(stdout)
-          if (error) {
-            console.error(error)
-            // some error happened
-            // TODO: log it (properly)
-            return
-          }
+  function updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
+    // const parsedTestNames = ...results.map((x) => parseTestName(x.trim()))
+    // const rootTree = mergeSingleItemTrees(buildTree(parsedTestNames));
+    // const rootTree = buildTree(parsedTestNames)
 
-          const lines = stdout.split(/\n\r?|\r/)
-          const rawTests = lines.filter((line) => /^    /.test(line))
-          const parsedTestNames = rawTests.map((x) => parseTestName(x.trim()))
-          // const rootTree = mergeSingleItemTrees(buildTree(parsedTestNames));
-          const rootTree = buildTree(parsedTestNames)
+    controller.items.replace([]);
 
-          // convert the tree into tests
+              // convert the tree into tests
           const generateNode = (tree: ITestTreeNode) => {
             const treeNode = controller.createTestItem(tree.fullName, tree.name)
             for (const subTree of tree.subTrees.values()) {
@@ -84,13 +85,27 @@ export function createTestController(context: vscode.ExtensionContext): vscode.T
             return treeNode
           }
 
-          const rootNode = generateNode(rootTree)
-          rootNode.label = folder.name
-          controller.items.add(rootNode)
-        }
-      )
-    }
 
+    let count = 0
+    results.forEach(element => {      
+      const parsedTestNames = element.testNames.map((x) => parseTestName(x.trim()))
+      const rootTree = buildTree(parsedTestNames)
+      count += parsedTestNames.length
+      const rootNode = generateNode(rootTree)
+      rootNode.label = basename(element.folder)
+      controller.items.add(rootNode)
+
+    });
+
+    // change to use settings
+    statusBar.discovered(count);
+    controller._onDidChangeTreeData.fire(null);
+  }
+
+  
+  controller.refreshHandler = async (token) => {
+    await testCommands.discoverTests();
+    AppInsightsClient.sendEvent("refreshTestExplorer");
   }
 
   controller.createRunProfile('Run', vscode.TestRunProfileKind.Run, async (request, token) => {
