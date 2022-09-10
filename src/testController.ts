@@ -1,7 +1,8 @@
-import { mkdtemp, rmdir } from 'fs/promises'
+import { rmdir } from 'fs/promises'
 import { execFile } from 'child_process'
-import { tmpdir } from 'os'
-import path = require('path')
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import * as vscode from 'vscode'
 import { Utility } from './utility'
 import { parseTestName } from './parseTestName'
@@ -150,7 +151,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const joinedFilters = toBeJoined.join('&')
 
     const filterArgs = joinedFilters.length > 0 ? ['--filter', joinedFilters] : []
-    const resultsFolder = path.join(tmpdir(), await mkdtemp('test-explorer'))
+    const resultsFolder = fs.mkdtempSync(path.join(os.tmpdir(), "test-explorer"));
     const resultsFile = path.join(resultsFolder, 'test-results.trx')
     const loggerArgs = ['--logger', 'trx;LogFileName=' + resultsFile]
 
