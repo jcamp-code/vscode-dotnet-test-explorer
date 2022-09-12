@@ -125,16 +125,16 @@ export class TestCommands implements Disposable {
     }
 
     public runAllTests(): void {
-        this.runTestCommand("", false, false);
+        this.runTestCommand("", false);
         AppInsightsClient.sendEvent("runAllTests");
     }
 
-    public async runTest(test: TestNode, exclusions?: string[]): Promise<any> {
-        return this.runTestByName(test.fqn, !test.isFolder, exclusions);
+    public runTest(test: TestNode): void {
+        this.runTestByName(test.fqn, !test.isFolder);
     }
 
-    public async runTestByName(testName: string, isSingleTest: boolean, exclusions?: string[]): Promise<any> {
-        return this.runTestCommand(testName, isSingleTest, false, exclusions);
+    public runTestByName(testName: string, isSingleTest: boolean) {
+        this.runTestCommand(testName, isSingleTest, false);
         AppInsightsClient.sendEvent("runTest");
     }
 
@@ -145,7 +145,7 @@ export class TestCommands implements Disposable {
 
     public rerunLastCommand(): void {
         if (this.lastRunTestContext != null) {
-            this.runTestCommand(this.lastRunTestContext.testName, this.lastRunTestContext.isSingleTest, false);
+            this.runTestCommand(this.lastRunTestContext.testName, this.lastRunTestContext.isSingleTest);
             AppInsightsClient.sendEvent("rerunLastCommand");
         }
     }
@@ -156,7 +156,7 @@ export class TestCommands implements Disposable {
         }
     }
 
-    public async runTestCommand(testName: string, isSingleTest: boolean, debug: boolean, exclusions?: string[]): Promise<any> {
+    public async runTestCommand(testName: string, isSingleTest: boolean, debug?: boolean, exclusions?: string[]): Promise<any> {
 
         if (this.isRunning) {
             Logger.Log("Tests already running, ignore request to run tests for " + testName);
