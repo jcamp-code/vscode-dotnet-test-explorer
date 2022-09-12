@@ -95,7 +95,8 @@ export function createTestController(context: vscode.ExtensionContext, testComma
 
     // have original tree for original explorer
     const generateItemFromNode = (tree: TestNode) => {
-      const treeNode = controller.createTestItem(tree.fullName, tree.name)
+      const _fqn = Utility.getFqnTestName(tree.fullName).replace('+', '.')
+      const treeNode = controller.createTestItem(tree.fullName, tree.name, vscode.Uri.parse(`vscdnte:${_fqn}`))
       controller.testNodesMap.set(treeNode, tree);
       if (tree.children) {
         for (const subTree of tree.children) {
