@@ -250,25 +250,10 @@ export function createTestController(context: vscode.ExtensionContext, testComma
   controller.createRunProfile('Run', vscode.TestRunProfileKind.Run, async (request, token) => {
     const run = controller.createTestRun(request, 'My test run', true)
   
-    const itemsToRun: vscode.TestItem[] = []
-
-    const addItems = (item: vscode.TestItem) => {
-      itemsToRun.push(item)
-    }
-    const removeItems = (item: vscode.TestItem) => {
-      if (itemsToRun.includes(item)) 
-        itemsToRun.splice(itemsToRun.indexOf(item), 1)
-
-      item.children.forEach((element) => {
-        removeItems(element)
-      })
-    }
     const createFilterArg = (item: vscode.TestItem, negate: boolean) => {
       const fullMatch = item.children.size === 0
       const operator = (negate ? '!' : '') + (fullMatch ? '=' : '~')
       const fullyQualifiedName = item.id.replaceAll(/\(.*\)/g, '')
-      if (!negate) addItems(item)
-      if (negate) removeItems(item)
       return `FullyQualifiedName${operator}${fullyQualifiedName}`
     }
 
@@ -284,7 +269,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     }
     if (request.include) {
     //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
-    const itemPromises =  itemsToRun.map(async (item) => {
+    const itemPromises =  request.include.map(async (item) => {
       startChildren(item)
       const result = await testCommands.runTestCommand(item.id, item.children.size == 0, false)
       if (result) await addTestResults(run, result)
@@ -372,25 +357,10 @@ export function createTestController(context: vscode.ExtensionContext, testComma
 
         const run = controller.createTestRun(request, 'My test run', true)
   
-    const itemsToRun: vscode.TestItem[] = []
-
-    const addItems = (item: vscode.TestItem) => {
-      itemsToRun.push(item)
-    }
-    const removeItems = (item: vscode.TestItem) => {
-      if (itemsToRun.includes(item)) 
-        itemsToRun.splice(itemsToRun.indexOf(item), 1)
-
-      item.children.forEach((element) => {
-        removeItems(element)
-      })
-    }
     const createFilterArg = (item: vscode.TestItem, negate: boolean) => {
       const fullMatch = item.children.size === 0
       const operator = (negate ? '!' : '') + (fullMatch ? '=' : '~')
       const fullyQualifiedName = item.id.replaceAll(/\(.*\)/g, '')
-      if (!negate) addItems(item)
-      if (negate) removeItems(item)
       return `FullyQualifiedName${operator}${fullyQualifiedName}`
     }
 
@@ -407,7 +377,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     
     if (request.include) {
     //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
-    const itemPromises =  itemsToRun.map(async (item) => {
+    const itemPromises =  request.include.map(async (item) => {
       startChildren(item)
       const result = await testCommands.runTestCommand(item.id, item.children.size == 0, true)
       if (result) await addTestResults(run, result)
