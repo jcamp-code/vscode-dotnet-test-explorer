@@ -193,11 +193,11 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     function addTestResults(results: ITestResult) {
 
       const fullNamesForTestResults = results.testResults.map((r) => r.fullName);
-      controller.discoveredTests = []
+      // controller.discoveredTests = []
 
       if (results.clearPreviousTestResults) {
           controller.discoveredTests = [...fullNamesForTestResults];
-          controller.testResults = null;
+          // controller.testResults = null;
           buildItems()
           
       } else {
@@ -233,22 +233,22 @@ export function createTestController(context: vscode.ExtensionContext, testComma
           })
         }
 
-        controller.items.forEach((child) => {
-          processResults(child)
+        controller.items.forEach((root) => {
+          processResults(root)
         })
         
       }
+// run.end()
 
-          run.end()
-
-      statusBar.testRun(results.testResults);
+//       statusBar.testRun(results.testResults);
 
       // this._onDidChangeTreeData.fire(null);
     }
 
-    if (controller.resultHandler === null) {
-      testCommands.onNewTestResults(addTestResults, controller);
-    }
+   // if (controller.resultHandler === null) {
+      //testCommands.onNewTestResults(addTestResults, controller);
+     /// controller.resultHandler = true
+ //   }
   
     const itemsToRun: vscode.TestItem[] = []
 
@@ -278,11 +278,25 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const includeFilters = request.include?.map((item) => createFilterArg(item, false))
     const excludeFilters = request.exclude.map((item) => createFilterArg(item, true))
 
-    
-    itemsToRun.map(async (item) => {
+    function startChildren(item: vscode.TestItem) {
       run.started(item)
-      await testCommands.runTestByName(item.id, item.children.size == 0)
+      item.children.forEach((child => {
+        startChildren(child)
+      }))
+
+    }
+    
+    //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
+    const itemPromises =  itemsToRun.map(async (item) => {
+      startChildren(item)
+      const result = await testCommands.runTestByName(item.id, item.children.size == 0)
+      if (result) addTestResults(result)
     })
+
+    await Promise.all(itemPromises)
+
+    run.end()
+
 
     const toBeJoined = [...excludeFilters]
     if (includeFilters) {
