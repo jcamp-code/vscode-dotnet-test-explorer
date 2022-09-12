@@ -14,6 +14,6 @@
 		}
 	],
 	"settings": {
-		"dotnet-test-explorer.autoWatch": true
+		"dotnet-test-explorer.autoWatch": false
 	}
 }

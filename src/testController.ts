@@ -7,16 +7,24 @@ import * as vscode from 'vscode'
 import { Utility } from './utility'
 import { parseTestName } from './parseTestName'
 import { parseResults } from './testResultsFile'
-import { buildTree, ITestTreeNode } from './buildTree'
+import { buildTree, ITestTreeNode, mergeSingleItemTrees } from './buildTree'
 import { TestCommands } from './testCommands'
 import { IDiscoverTestsResult } from './testDiscovery'
 import { basename } from 'path'
 import { AppInsightsClient } from "./appInsightsClient";
 import { StatusBar } from './statusBar'
+import { TestNode } from './testNode';
+import { ITestResult, TestResult } from './testResult';
+import { Logger } from './logger';
 
 export interface TestControllerExtended extends vscode.TestController {
   _onDidChangeTreeData: vscode.EventEmitter<any>
   onDidChangeTreeData: vscode.Event<any>
+  testNodesMap: WeakMap<vscode.TestItem, TestNode>;
+  testNodes: TestNode[];
+  testResults: TestResult[];
+  discoveredTests: string[];
+  resultHandler: any;
 }
 
 export function createTestController(context: vscode.ExtensionContext, testCommands: TestCommands, statusBar: StatusBar): vscode.TestController {
@@ -26,6 +34,11 @@ export function createTestController(context: vscode.ExtensionContext, testComma
   // extend the VSC controller with additional properties
   controller._onDidChangeTreeData = new vscode.EventEmitter<any>();
   controller.onDidChangeTreeData = controller._onDidChangeTreeData.event;
+  controller.testNodesMap = new WeakMap<vscode.TestItem, TestNode>();
+  controller.testNodes = [];
+  controller.testResults = [];
+  controller.discoveredTests = [];
+  controller.resultHandler = null;
 
   // https://github.com/microsoft/vscode/blob/b7d5b65a13299083e92bca91be8fa1289e95d5c1/src/vs/workbench/contrib/testing/browser/testing.contribution.ts
   // https://github.com/microsoft/vscode/blob/c11dabf9ce669f599a18d7485d397834abc1c8e1/src/vs/workbench/api/common/extHostTesting.ts - controller
@@ -48,9 +61,61 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     } catch {}
   }
   context.subscriptions.push(vscode.commands.registerCommand('vscode.revealTest', commandHandler))
+   
+   testCommands.onTestDiscoveryFinished(updateWithDiscoveredTests, controller);
+   testCommands.onTestDiscoveryStarted(updateWithDiscoveringTest, controller);
+   
+
+
+    function buildItems() {
+          const treeMode = Utility.getConfiguration().get<string>("treeMode");
+
+          function createConcreteTree(parentNamespace: string, abstractTree: ITestTreeNode): TestNode {
+      const children = [];
+      for (const subNamespace of abstractTree.subTrees.values()) {
+          children.push(createConcreteTree(abstractTree.fullName, subNamespace));
+      }
+      for (const test of abstractTree.tests) {
+          const testNode = new TestNode(abstractTree.fullName, test, []);
+          controller.testNodes.push(testNode);
+          children.push(testNode);
+      }
+      return new TestNode(parentNamespace, abstractTree.name, [], children);
+    }
+
+          const parsedTestNames = controller.discoveredTests.map(parseTestName);    
+    let tree = buildTree(parsedTestNames);
+
+            if (treeMode === "merged") {
+            tree = mergeSingleItemTrees(tree);
+        }
+
+
+    const concreteRoot = createConcreteTree("", tree);
+
+    // have original tree for original explorer
+    const generateItemFromNode = (tree: TestNode) => {
+      const treeNode = controller.createTestItem(tree.fullName, tree.name)
+      controller.testNodesMap.set(treeNode, tree);
+      if (tree.children) {
+        for (const subTree of tree.children) {
+          treeNode.children.add(generateItemFromNode(subTree))
+        }
+      }
+      
+      return treeNode
+    }
+    const vsTestRoot = generateItemFromNode(concreteRoot)
+
+      vsTestRoot.children.forEach((sub) => {
+        controller.items.add(sub)
+      })
+        
   
-   testCommands.onTestDiscoveryFinished(updateWithDiscoveredTests, this);
-   testCommands.onTestDiscoveryStarted(updateWithDiscoveringTest, this);
+
+    }
+
+   
   function updateWithDiscoveringTest() {
   
     controller.items.replace([]);
@@ -59,6 +124,15 @@ export function createTestController(context: vscode.ExtensionContext, testComma
   }
 
   function updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
+    controller.items.replace([]);
+
+    controller.testNodes = [];
+    controller.discoveredTests = [].concat(...results.map((r) => r.testNames));
+    buildItems()
+
+  }
+
+  function updateWithDiscoveredTestsFirstTry(results: IDiscoverTestsResult[]) {
     // const parsedTestNames = ...results.map((x) => parseTestName(x.trim()))
     // const rootTree = mergeSingleItemTrees(buildTree(parsedTestNames));
     // const rootTree = buildTree(parsedTestNames)
@@ -66,21 +140,24 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     controller.items.replace([]);
 
               // convert the tree into tests
-          const generateNode = (tree: ITestTreeNode) => {
+          const generateItemFromNode = (tree: ITestTreeNode) => {
             const treeNode = controller.createTestItem(tree.fullName, tree.name)
+            // controller.testNodesMap.set(treeNode, tree);
+
             for (const subTree of tree.subTrees.values()) {
-              treeNode.children.add(generateNode(subTree))
+              treeNode.children.add(generateItemFromNode(subTree))
             }
             for (const test of tree.tests) {
               const _fqn = Utility.getFqnTestName(tree.fullName + '.' + test).replace('+', '.')
-              treeNode.children.add(
-                controller.createTestItem(
+              const childNode = controller.createTestItem(
                   tree.fullName + '.' + test,
                   test,
                   // vscode.Uri.parse(`command:dotnet-test-explorer.newGotoTest`) // doesn't work but need a uri to get icon to show, test extension expects a file / folder uri
                   vscode.Uri.parse(`vscdnte:${_fqn}`)
                 )
-              )
+                // controller.testNodesMap.set(childNode, tree.fullName);
+
+              treeNode.children.add(childNode)
             }
 
             return treeNode
@@ -92,7 +169,8 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       const parsedTestNames = element.testNames.map((x) => parseTestName(x.trim()))
       const rootTree = buildTree(parsedTestNames)
       count += parsedTestNames.length
-      const rootNode = generateNode(rootTree)
+      const rootNode = generateItemFromNode(rootTree)
+      controller.testNodesMap.set(rootNode, rootTree);
       rootNode.label = basename(element.folder)
       controller.items.add(rootNode)
 
@@ -112,14 +190,73 @@ export function createTestController(context: vscode.ExtensionContext, testComma
   controller.createRunProfile('Run', vscode.TestRunProfileKind.Run, async (request, token) => {
     const run = controller.createTestRun(request, 'My test run', true)
     const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
+    function addTestResults(results: ITestResult) {
+
+      const fullNamesForTestResults = results.testResults.map((r) => r.fullName);
+      controller.discoveredTests = []
+
+      if (results.clearPreviousTestResults) {
+          controller.discoveredTests = [...fullNamesForTestResults];
+          controller.testResults = null;
+          buildItems()
+          
+      } else {
+          const newTests = fullNamesForTestResults.filter((r) => controller.discoveredTests.indexOf(r) === -1);
+
+          if (newTests.length > 0) {
+              controller.discoveredTests.push(...newTests);
+              buildItems()
+              
+          }
+      }
+
+      controller.discoveredTests = controller.discoveredTests.sort();
+
+      statusBar.discovered(controller.discoveredTests.length);
+
+      controller.testResults = results.testResults;
+
+      if (controller.testResults) {
+
+        function processResults(item: vscode.TestItem) {
+          const result = results.testResults.find((tr) => tr.fullName === item.id);
+          if (result) {
+            Logger.Log(item.id)
+            if (result.outcome === 'Failed') run.failed(item, { message: result.message })
+            else if (result.outcome === 'NotExecuted') run.skipped(item)
+            else if (result.outcome === 'Passed') run.passed(item)
+            else console.log('unexpected value for outcome: ' + result.outcome)
+          }
+
+          item.children.forEach((child) => {
+            processResults(child)
+          })
+        }
+
+        controller.items.forEach((child) => {
+          processResults(child)
+        })
+        
+      }
+
+          run.end()
+
+      statusBar.testRun(results.testResults);
+
+      // this._onDidChangeTreeData.fire(null);
+    }
+
+    if (controller.resultHandler === null) {
+      testCommands.onNewTestResults(addTestResults, controller);
+    }
   
     const itemsToRun: vscode.TestItem[] = []
 
     const addItems = (item: vscode.TestItem) => {
       itemsToRun.push(item)
-      item.children.forEach((element) => {
-        addItems(element)
-      })
+      // item.children.forEach((element) => {
+      //   addItems(element)
+      // })
     }
     const removeItems = (item: vscode.TestItem) => {
       if (itemsToRun.includes(item)) 
@@ -141,7 +278,11 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const includeFilters = request.include?.map((item) => createFilterArg(item, false))
     const excludeFilters = request.exclude.map((item) => createFilterArg(item, true))
 
-    itemsToRun.map((item) => run.started(item))
+    
+    itemsToRun.map(async (item) => {
+      run.started(item)
+      await testCommands.runTestByName(item.id, item.children.size == 0)
+    })
 
     const toBeJoined = [...excludeFilters]
     if (includeFilters) {
@@ -154,7 +295,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const resultsFolder = fs.mkdtempSync(path.join(os.tmpdir(), "test-explorer"));
     const resultsFile = path.join(resultsFolder, 'test-results.trx')
     const loggerArgs = ['--logger', 'trx;LogFileName=' + resultsFile]
-
+/*
     try {
       const env = {
         ...process.env,
@@ -205,6 +346,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       // await unlink(resultsFile);
       await rmdir(resultsFolder)
     }
+    */
   })
 
   controller.createRunProfile('Debug', vscode.TestRunProfileKind.Debug, async (request, token) => {
