@@ -133,8 +133,8 @@ export class TestCommands implements Disposable {
         this.runTestByName(test.fqn, !test.isFolder);
     }
 
-    public runTestByName(testName: string, isSingleTest: boolean) {
-        this.runTestCommand(testName, isSingleTest, false);
+    public runTestByName(testName: string, isSingleTest: boolean): void {
+        this.runTestCommand(testName, isSingleTest);
         AppInsightsClient.sendEvent("runTest");
     }
 
