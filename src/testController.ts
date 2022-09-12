@@ -181,17 +181,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     statusBar.discovered(count);
     controller._onDidChangeTreeData.fire(null);
   }
-
-  
-  controller.refreshHandler = async (token) => {
-    await testCommands.discoverTests();
-    AppInsightsClient.sendEvent("refreshTestExplorer");
-  }
-
-  controller.createRunProfile('Run', vscode.TestRunProfileKind.Run, async (request, token) => {
-    const run = controller.createTestRun(request, 'My test run', true)
-    const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
-    function addTestResults(results: ITestResult) {
+    function addTestResults(run: vscode.TestRun, results: ITestResult) {
 
       const fullNamesForTestResults = results.testResults.map((r) => r.fullName);
       // controller.discoveredTests = []
@@ -246,6 +236,16 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       // this._onDidChangeTreeData.fire(null);
     }
 
+  
+  controller.refreshHandler = async (token) => {
+    await testCommands.discoverTests();
+    AppInsightsClient.sendEvent("refreshTestExplorer");
+  }
+
+  controller.createRunProfile('Run', vscode.TestRunProfileKind.Run, async (request, token) => {
+    const run = controller.createTestRun(request, 'My test run', true)
+    const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
+
    // if (controller.resultHandler === null) {
       //testCommands.onNewTestResults(addTestResults, controller);
      /// controller.resultHandler = true
@@ -292,7 +292,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const itemPromises =  itemsToRun.map(async (item) => {
       startChildren(item)
       const result = await testCommands.runTestCommand(item.id, item.children.size == 0, false)
-      if (result) addTestResults(result)
+      if (result) addTestResults(run, result)
     })
 
     await Promise.all(itemPromises)
@@ -301,7 +301,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       startChildren(child)
     })
     const result = await testCommands.runTestCommand("", false, false)
-    if (result) addTestResults(result)
+    if (result) addTestResults(run, result)
   }
 
     run.end()
@@ -393,60 +393,6 @@ export function createTestController(context: vscode.ExtensionContext, testComma
 
         const run = controller.createTestRun(request, 'My test run', true)
     const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
-    function addTestResults(results: ITestResult) {
-
-      const fullNamesForTestResults = results.testResults.map((r) => r.fullName);
-      // controller.discoveredTests = []
-
-      if (results.clearPreviousTestResults) {
-          controller.discoveredTests = [...fullNamesForTestResults];
-          // controller.testResults = null;
-          buildItems()
-          
-      } else {
-          const newTests = fullNamesForTestResults.filter((r) => controller.discoveredTests.indexOf(r) === -1);
-
-          if (newTests.length > 0) {
-              controller.discoveredTests.push(...newTests);
-              buildItems()
-              
-          }
-      }
-
-      controller.discoveredTests = controller.discoveredTests.sort();
-
-      statusBar.discovered(controller.discoveredTests.length);
-
-      controller.testResults = results.testResults;
-
-      if (controller.testResults) {
-
-        function processResults(item: vscode.TestItem) {
-          const result = results.testResults.find((tr) => tr.fullName === item.id);
-          if (result) {
-            Logger.Log(item.id)
-            if (result.outcome === 'Failed') run.failed(item, { message: result.message })
-            else if (result.outcome === 'NotExecuted') run.skipped(item)
-            else if (result.outcome === 'Passed') run.passed(item)
-            else console.log('unexpected value for outcome: ' + result.outcome)
-          }
-
-          item.children.forEach((child) => {
-            processResults(child)
-          })
-        }
-
-        controller.items.forEach((root) => {
-          processResults(root)
-        })
-        
-      }
-// run.end()
-
-//       statusBar.testRun(results.testResults);
-
-      // this._onDidChangeTreeData.fire(null);
-    }
 
    // if (controller.resultHandler === null) {
       //testCommands.onNewTestResults(addTestResults, controller);
@@ -494,7 +440,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const itemPromises =  itemsToRun.map(async (item) => {
       startChildren(item)
       const result = await testCommands.runTestCommand(item.id, item.children.size == 0, true)
-      if (result) addTestResults(result)
+      if (result) addTestResults(run, result)
     })
 
     await Promise.all(itemPromises)
@@ -503,7 +449,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       startChildren(child)
     })
     const result = await testCommands.runTestCommand("", false, true)
-    if (result) addTestResults(result)
+    if (result) addTestResults(run, result)
   }
 
     const toBeJoined = [...excludeFilters]
