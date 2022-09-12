@@ -198,28 +198,36 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       statusBar.discovered(controller.discoveredTests.length);
 
       controller.testResults = results.testResults;
-//TODO: search by test results, not by tests
-      if (controller.testResults) {
 
-        function processResults(item: vscode.TestItem) {
-          const result = results.testResults.find((tr) => tr.fullName === item.id);
-          if (result) {
-            Logger.Log(item.id)
-            if (result.outcome === 'Failed') run.failed(item, { message: result.message })
-            else if (result.outcome === 'NotExecuted') run.skipped(item)
-            else if (result.outcome === 'Passed') run.passed(item)
-            else console.log('unexpected value for outcome: ' + result.outcome)
-          }
-
-          item.children.forEach((child) => {
-            processResults(child)
+      function searchTestItems(item: vscode.TestItemCollection, name: string) {
+        let result = null
+        item.forEach(child => {
+          if (child.id === name) result = child
+        })
+        if (!result) {
+          item.forEach(child => {
+            if (!result) result = searchTestItems(child.children, name)
           })
+      }
+        return result
+      }
+
+      if (controller.testResults) {
+        controller.testResults.forEach(result => {
+        const item = searchTestItems(controller.items, result.fullName)
+          
+        if (item) {
+          Logger.Log(item.id)
+          if (result.outcome === 'Failed') run.failed(item, { message: result.message })
+          else if (result.outcome === 'NotExecuted') run.skipped(item)
+          else if (result.outcome === 'Passed') run.passed(item)
+          else console.log('unexpected value for outcome: ' + result.outcome)
+
+          return
         }
 
-        controller.items.forEach((root) => {
-          processResults(root)
         })
-        
+
       }
 
  statusBar.testRun(results.testResults);
