@@ -12,6 +12,7 @@ import { TestNode } from "./testNode";
 import { ITestResult, TestResult } from "./testResult";
 import { parseResults } from "./testResultsFile";
 import { Utility } from "./utility";
+import * as argv from "minimist"
 
 export interface ITestRunContext {
     testName: string;
@@ -186,10 +187,10 @@ export class TestCommands implements Disposable {
 
         try {
             if (Utility.runInParallel) {
-                await Promise.all(testDirectories.map(async (dir, i) => this.runTestCommandForSpecificDirectory(dir, testName, isSingleTest, i, debug)));
+                await Promise.all(testDirectories.map(async (dir, i) => this.runTestCommandForSpecificDirectory(dir, testName, isSingleTest, i, debug, exclusions)));
             } else {
                 for (let i = 0; i < testDirectories.length; i++) {
-                    await this.runTestCommandForSpecificDirectory(testDirectories[i], testName, isSingleTest, i, debug);
+                    await this.runTestCommandForSpecificDirectory(testDirectories[i], testName, isSingleTest, i, debug, exclusions);
                 }
             }
             const globPromise = new Promise<string[]>((resolve, reject) =>
@@ -253,17 +254,37 @@ export class TestCommands implements Disposable {
         const trxTestName = index + ".trx";
 
         return new Promise((resolve, reject) => {
-            const testResultFile = path.join(this.testResultsFolder, trxTestName);
-            let command = `dotnet test${Utility.additionalArgumentsOption} --no-build --logger \"trx;LogFileName=${testResultFile}\"`;
 
+            const filters: string[]  = []
             if (testName && testName.length) {
                 if (isSingleTest) {
-                    command = command + ` --filter "FullyQualifiedName=${testName.replace(/\(.*\)/g, "")}"`;
+                    filters.push (`FullyQualifiedName=${testName.replace(/\(.*\)/g, "")}`)
                 } else {
-                    command = command + ` --filter "FullyQualifiedName~${testName.replace(/\(.*\)/g, "")}"`;
+                    filters.push(`FullyQualifiedName~${testName.replace(/\(.*\)/g, "")}`)                    
                 }
             }
+            if (exclusions) filters.push(...exclusions)
 
+
+            let options = Utility.additionalArgumentsOption ?? ''
+            const reg = /(?:--filter ".*")|(?:--filter .[^\s]*)/gm
+            const filterArg = reg.exec(options)
+
+            if (filterArg) {
+                filters.push(filterArg[0].replace('--filter', '').trim())
+                options = options.replace(reg, '').trim()
+            }
+            if (options) options = ' ' + options
+
+            const testResultFile = path.join(this.testResultsFolder, trxTestName);
+            let command = `dotnet test${options} --no-build --logger \"trx;LogFileName=${testResultFile}\"`;
+
+            if (filters) {
+                const joinedFilters = filters.join('&')
+                const filterArgs = `--filter "${joinedFilters}"`
+                command = `${command} ${filterArgs}`
+            }
+            
             this.runBuildCommandForSpecificDirectory(testDirectoryPath)
                 .then(() => {
                     Logger.Log(`Executing ${command} in ${testDirectoryPath}`);

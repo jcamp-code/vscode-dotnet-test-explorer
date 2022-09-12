@@ -224,7 +224,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
         const item = searchTestItems(controller.items, result.fullName)
           
         if (item) {
-          Logger.Log(item.id)
+          Logger.Log(`${item.id}: ${result.outcome}`)
           if (result.outcome === 'Failed') run.failed(item, { message: result.message })
           else if (result.outcome === 'NotExecuted') run.skipped(item)
           else if (result.outcome === 'Passed') run.passed(item)
@@ -259,6 +259,8 @@ export function createTestController(context: vscode.ExtensionContext, testComma
 
     const includeFilters = request.include?.map((item) => createFilterArg(item, false))
     const excludeFilters = request.exclude.map((item) => createFilterArg(item, true))
+//     const joinedFilters = toBeJoined.join('&')
+
 
     function startChildren(item: vscode.TestItem) {
       run.started(item)
@@ -271,7 +273,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
     const itemPromises =  request.include.map(async (item) => {
       startChildren(item)
-      const result = await testCommands.runTestCommand(item.id, item.children.size == 0, false)
+      const result = await testCommands.runTestCommand(item.id, item.children.size == 0, false, excludeFilters)
       if (result) await addTestResults(run, result)
     })
 
@@ -280,24 +282,15 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     controller.items.forEach(child => {
       startChildren(child)
     })
-    const result = await testCommands.runTestCommand("", false, false)
+    const result = await testCommands.runTestCommand("", false, false, excludeFilters)
     if (result) await addTestResults(run, result)
   }
 
     run.end()
 
 
-    const toBeJoined = [...excludeFilters]
-    if (includeFilters) {
-      toBeJoined.push('(' + includeFilters.join('|') + ')')
-    }
 
-    const joinedFilters = toBeJoined.join('&')
-
-    const filterArgs = joinedFilters.length > 0 ? ['--filter', joinedFilters] : []
-    const resultsFolder = fs.mkdtempSync(path.join(os.tmpdir(), "test-explorer"));
-    const resultsFile = path.join(resultsFolder, 'test-results.trx')
-    const loggerArgs = ['--logger', 'trx;LogFileName=' + resultsFile]
+//     const filterArgs = joinedFilters.length > 0 ? ['--filter', joinedFilters] : []
 /*
     try {
       const env = {
