@@ -156,7 +156,7 @@ export class TestCommands implements Disposable {
         }
     }
 
-    private async runTestCommand(testName: string, isSingleTest: boolean, debug: boolean, exclusions?: string[]): Promise<any> {
+    public async runTestCommand(testName: string, isSingleTest: boolean, debug: boolean, exclusions?: string[]): Promise<any> {
 
         if (this.isRunning) {
             Logger.Log("Tests already running, ignore request to run tests for " + testName);

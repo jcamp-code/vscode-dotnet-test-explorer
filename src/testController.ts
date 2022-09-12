@@ -250,6 +250,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
      /// controller.resultHandler = true
  //   }
   
+  let tests = request.include ?? controller.items
     const itemsToRun: vscode.TestItem[] = []
 
     const addItems = (item: vscode.TestItem) => {
@@ -285,15 +286,22 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       }))
 
     }
-    
+    if (request.include) {
     //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
     const itemPromises =  itemsToRun.map(async (item) => {
       startChildren(item)
-      const result = await testCommands.runTestByName(item.id, item.children.size == 0)
+      const result = await testCommands.runTestCommand(item.id, item.children.size == 0, false)
       if (result) addTestResults(result)
     })
 
     await Promise.all(itemPromises)
+  } else {
+    controller.items.forEach(child => {
+      startChildren(child)
+    })
+    const result = await testCommands.runTestCommand("", false, false)
+    if (result) addTestResults(result)
+  }
 
     run.end()
 
@@ -364,22 +372,151 @@ export function createTestController(context: vscode.ExtensionContext, testComma
   })
 
   controller.createRunProfile('Debug', vscode.TestRunProfileKind.Debug, async (request, token) => {
-    const run = controller.createTestRun(request, 'My test run', true)
-    const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
+    // const run = controller.createTestRun(request, 'My test run', true)
+    // const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
 
-    let tests = request.include ?? controller.items
-    tests.forEach((test) => {
-      run.enqueued(test)
+    // let tests = request.include ?? controller.items
+    // tests.forEach((test) => {
+    //   run.enqueued(test)
+    // })
+    // await wait()
+    // tests.forEach((test) => {
+    //   run.started(test)
+    // })
+    // await wait()
+    // tests.forEach((test) => {
+    //   run.passed(test)
+    // })
+    // run.end()
+
+
+        const run = controller.createTestRun(request, 'My test run', true)
+    const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
+    function addTestResults(results: ITestResult) {
+
+      const fullNamesForTestResults = results.testResults.map((r) => r.fullName);
+      // controller.discoveredTests = []
+
+      if (results.clearPreviousTestResults) {
+          controller.discoveredTests = [...fullNamesForTestResults];
+          // controller.testResults = null;
+          buildItems()
+          
+      } else {
+          const newTests = fullNamesForTestResults.filter((r) => controller.discoveredTests.indexOf(r) === -1);
+
+          if (newTests.length > 0) {
+              controller.discoveredTests.push(...newTests);
+              buildItems()
+              
+          }
+      }
+
+      controller.discoveredTests = controller.discoveredTests.sort();
+
+      statusBar.discovered(controller.discoveredTests.length);
+
+      controller.testResults = results.testResults;
+
+      if (controller.testResults) {
+
+        function processResults(item: vscode.TestItem) {
+          const result = results.testResults.find((tr) => tr.fullName === item.id);
+          if (result) {
+            Logger.Log(item.id)
+            if (result.outcome === 'Failed') run.failed(item, { message: result.message })
+            else if (result.outcome === 'NotExecuted') run.skipped(item)
+            else if (result.outcome === 'Passed') run.passed(item)
+            else console.log('unexpected value for outcome: ' + result.outcome)
+          }
+
+          item.children.forEach((child) => {
+            processResults(child)
+          })
+        }
+
+        controller.items.forEach((root) => {
+          processResults(root)
+        })
+        
+      }
+// run.end()
+
+//       statusBar.testRun(results.testResults);
+
+      // this._onDidChangeTreeData.fire(null);
+    }
+
+   // if (controller.resultHandler === null) {
+      //testCommands.onNewTestResults(addTestResults, controller);
+     /// controller.resultHandler = true
+ //   }
+  
+    const itemsToRun: vscode.TestItem[] = []
+
+    const addItems = (item: vscode.TestItem) => {
+      itemsToRun.push(item)
+      // item.children.forEach((element) => {
+      //   addItems(element)
+      // })
+    }
+    const removeItems = (item: vscode.TestItem) => {
+      if (itemsToRun.includes(item)) 
+        itemsToRun.splice(itemsToRun.indexOf(item), 1)
+
+      item.children.forEach((element) => {
+        removeItems(element)
+      })
+    }
+    const createFilterArg = (item: vscode.TestItem, negate: boolean) => {
+      const fullMatch = item.children.size === 0
+      const operator = (negate ? '!' : '') + (fullMatch ? '=' : '~')
+      const fullyQualifiedName = item.id.replaceAll(/\(.*\)/g, '')
+      if (!negate) addItems(item)
+      if (negate) removeItems(item)
+      return `FullyQualifiedName${operator}${fullyQualifiedName}`
+    }
+
+    const includeFilters = request.include?.map((item) => createFilterArg(item, false))
+    const excludeFilters = request.exclude.map((item) => createFilterArg(item, true))
+
+    function startChildren(item: vscode.TestItem) {
+      run.started(item)
+      item.children.forEach((child => {
+        startChildren(child)
+      }))
+
+    }
+    
+    if (request.include) {
+    //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
+    const itemPromises =  itemsToRun.map(async (item) => {
+      startChildren(item)
+      const result = await testCommands.runTestCommand(item.id, item.children.size == 0, true)
+      if (result) addTestResults(result)
     })
-    await wait()
-    tests.forEach((test) => {
-      run.started(test)
+
+    await Promise.all(itemPromises)
+  } else {
+    controller.items.forEach(child => {
+      startChildren(child)
     })
-    await wait()
-    tests.forEach((test) => {
-      run.passed(test)
-    })
-    run.end()
+    const result = await testCommands.runTestCommand("", false, true)
+    if (result) addTestResults(result)
+  }
+
+    const toBeJoined = [...excludeFilters]
+    if (includeFilters) {
+      toBeJoined.push('(' + includeFilters.join('|') + ')')
+    }
+
+    const joinedFilters = toBeJoined.join('&')
+
+    const filterArgs = joinedFilters.length > 0 ? ['--filter', joinedFilters] : []
+    const resultsFolder = fs.mkdtempSync(path.join(os.tmpdir(), "test-explorer"));
+    const resultsFile = path.join(resultsFolder, 'test-results.trx')
+    const loggerArgs = ['--logger', 'trx;LogFileName=' + resultsFile]
+
   })
 
   controller.createRunProfile('Watch', vscode.TestRunProfileKind.Run, async (request, token) => {
