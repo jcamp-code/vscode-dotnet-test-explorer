@@ -211,8 +211,7 @@ export class TestCommands implements Disposable {
                     .window
                     .showErrorMessage("Build failed. Fix your build and try to run the test(s) again", "Re-run test(s)",)
                     .then(selection => {
-                        if (selection !== undefined)
-                        {
+                        if (selection !== undefined) {
                             vscode.commands.executeCommand("dotnet-test-explorer.rerunLastCommand");
                         }
                     });;
@@ -228,8 +227,8 @@ export class TestCommands implements Disposable {
         this.isRunning = false;
     }
 
-    private runBuildCommandForSpecificDirectory(testDirectoryPath: string): Promise<any> {
-        return new Promise<void>((resolve, reject) => {
+    private runBuildCommandForSpecificDirectory(testDirectoryPath: string): Promise<void> {
+        return new Promise((resolve, reject) => {
 
             if (Utility.skipBuild) {
                 Logger.Log(`User has passed --no-build, skipping build`);
@@ -247,7 +246,7 @@ export class TestCommands implements Disposable {
         });
     }
 
-    private runTestCommandForSpecificDirectory(testDirectoryPath: string, testName: string, isSingleTest: boolean, index: number, debug?: boolean): Promise<any[]> {
+    private runTestCommandForSpecificDirectory(testDirectoryPath: string, testName: string, isSingleTest: boolean, index: number, debug?: boolean): Promise<void> {
 
         const trxTestName = index + ".trx";
 
