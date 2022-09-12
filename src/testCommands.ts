@@ -129,12 +129,12 @@ export class TestCommands implements Disposable {
         AppInsightsClient.sendEvent("runAllTests");
     }
 
-    public runTest(test: TestNode, exclusions?: string[]): void {
-        this.runTestByName(test.fqn, !test.isFolder, exclusions);
+    public async runTest(test: TestNode, exclusions?: string[]): Promise<any> {
+        return this.runTestByName(test.fqn, !test.isFolder, exclusions);
     }
 
-    public runTestByName(testName: string, isSingleTest: boolean, exclusions?: string[]): void {
-        this.runTestCommand(testName, isSingleTest, false, exclusions);
+    public async runTestByName(testName: string, isSingleTest: boolean, exclusions?: string[]): Promise<any> {
+        return this.runTestCommand(testName, isSingleTest, false, exclusions);
         AppInsightsClient.sendEvent("runTest");
     }
 
@@ -156,7 +156,7 @@ export class TestCommands implements Disposable {
         }
     }
 
-    private async runTestCommand(testName: string, isSingleTest: boolean, debug: boolean, exclusions?: string[]): Promise<void> {
+    private async runTestCommand(testName: string, isSingleTest: boolean, debug: boolean, exclusions?: string[]): Promise<any> {
 
         if (this.isRunning) {
             Logger.Log("Tests already running, ignore request to run tests for " + testName);
@@ -203,6 +203,8 @@ export class TestCommands implements Disposable {
                 allTestResults.push(...testResults);
             }
             this.sendNewTestResults({ clearPreviousTestResults: testName === "", testResults: allTestResults });
+            this.isRunning = false;
+            return { clearPreviousTestResults: testName === "", testResults: allTestResults }
         } catch (err) {
             Logger.Log(`Error while executing test command: ${err}`);
             if (err.message === "Build command failed") {
