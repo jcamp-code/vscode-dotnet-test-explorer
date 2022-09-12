@@ -287,7 +287,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const itemPromises =  itemsToRun.map(async (item) => {
       startChildren(item)
       const result = await testCommands.runTestCommand(item.id, item.children.size == 0, false)
-      if (result) addTestResults(run, result)
+      if (result) await addTestResults(run, result)
     })
 
     await Promise.all(itemPromises)
@@ -296,7 +296,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       startChildren(child)
     })
     const result = await testCommands.runTestCommand("", false, false)
-    if (result) addTestResults(run, result)
+    if (result) await addTestResults(run, result)
   }
 
     run.end()
@@ -410,7 +410,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const itemPromises =  itemsToRun.map(async (item) => {
       startChildren(item)
       const result = await testCommands.runTestCommand(item.id, item.children.size == 0, true)
-      if (result) addTestResults(run, result)
+      if (result) await addTestResults(run, result)
     })
 
     await Promise.all(itemPromises)
@@ -419,7 +419,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       startChildren(child)
     })
     const result = await testCommands.runTestCommand("", false, true)
-    if (result) addTestResults(run, result)
+    if (result) await addTestResults(run, result)
   }
 
     const toBeJoined = [...excludeFilters]
