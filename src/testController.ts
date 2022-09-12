@@ -18,8 +18,6 @@ import { ITestResult, TestResult } from './testResult';
 import { Logger } from './logger';
 
 export interface TestControllerExtended extends vscode.TestController {
-  _onDidChangeTreeData: vscode.EventEmitter<any>
-  onDidChangeTreeData: vscode.Event<any>
   testNodesMap: WeakMap<vscode.TestItem, TestNode>;
   testNodes: TestNode[];
   testResults: TestResult[];
@@ -32,8 +30,6 @@ export function createTestController(context: vscode.ExtensionContext, testComma
   const controller = vscode.tests.createTestController('dotnet-test-explorer', 'Dot Net Tests') as TestControllerExtended
 
   // extend the VSC controller with additional properties
-  controller._onDidChangeTreeData = new vscode.EventEmitter<any>();
-  controller.onDidChangeTreeData = controller._onDidChangeTreeData.event;
   controller.testNodesMap = new WeakMap<vscode.TestItem, TestNode>();
   controller.testNodes = [];
   controller.testResults = [];
@@ -120,8 +116,6 @@ export function createTestController(context: vscode.ExtensionContext, testComma
   function updateWithDiscoveringTest() {
   
     controller.items.replace([]);
-    // update with settings
-    controller._onDidChangeTreeData.fire(null);
   }
 
   function updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
@@ -177,9 +171,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
 
     });
 
-    // change to use settings
     statusBar.discovered(count);
-    controller._onDidChangeTreeData.fire(null);
   }
     function addTestResults(run: vscode.TestRun, results: ITestResult) {
 
@@ -206,7 +198,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       statusBar.discovered(controller.discoveredTests.length);
 
       controller.testResults = results.testResults;
-
+//TODO: search by test results, not by tests
       if (controller.testResults) {
 
         function processResults(item: vscode.TestItem) {
@@ -229,11 +221,9 @@ export function createTestController(context: vscode.ExtensionContext, testComma
         })
         
       }
-// run.end()
 
-//       statusBar.testRun(results.testResults);
+ statusBar.testRun(results.testResults);
 
-      // this._onDidChangeTreeData.fire(null);
     }
 
   
@@ -244,21 +234,11 @@ export function createTestController(context: vscode.ExtensionContext, testComma
 
   controller.createRunProfile('Run', vscode.TestRunProfileKind.Run, async (request, token) => {
     const run = controller.createTestRun(request, 'My test run', true)
-    const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
-
-   // if (controller.resultHandler === null) {
-      //testCommands.onNewTestResults(addTestResults, controller);
-     /// controller.resultHandler = true
- //   }
   
-  let tests = request.include ?? controller.items
     const itemsToRun: vscode.TestItem[] = []
 
     const addItems = (item: vscode.TestItem) => {
       itemsToRun.push(item)
-      // item.children.forEach((element) => {
-      //   addItems(element)
-      // })
     }
     const removeItems = (item: vscode.TestItem) => {
       if (itemsToRun.includes(item)) 
@@ -373,39 +353,14 @@ export function createTestController(context: vscode.ExtensionContext, testComma
   })
 
   controller.createRunProfile('Debug', vscode.TestRunProfileKind.Debug, async (request, token) => {
-    // const run = controller.createTestRun(request, 'My test run', true)
-    // const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // let tests = request.include ?? controller.items
-    // tests.forEach((test) => {
-    //   run.enqueued(test)
-    // })
-    // await wait()
-    // tests.forEach((test) => {
-    //   run.started(test)
-    // })
-    // await wait()
-    // tests.forEach((test) => {
-    //   run.passed(test)
-    // })
-    // run.end()
 
 
         const run = controller.createTestRun(request, 'My test run', true)
-    const wait = () => new Promise((resolve) => setTimeout(resolve, 1000))
-
-   // if (controller.resultHandler === null) {
-      //testCommands.onNewTestResults(addTestResults, controller);
-     /// controller.resultHandler = true
- //   }
   
     const itemsToRun: vscode.TestItem[] = []
 
     const addItems = (item: vscode.TestItem) => {
       itemsToRun.push(item)
-      // item.children.forEach((element) => {
-      //   addItems(element)
-      // })
     }
     const removeItems = (item: vscode.TestItem) => {
       if (itemsToRun.includes(item)) 
