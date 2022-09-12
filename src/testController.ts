@@ -16,6 +16,7 @@ import { StatusBar } from './statusBar'
 import { TestNode } from './testNode';
 import { ITestResult, TestResult } from './testResult';
 import { Logger } from './logger';
+import { GotoTest } from './gotoTest';
 
 export interface TestControllerExtended extends vscode.TestController {
   testNodesMap: WeakMap<vscode.TestItem, TestNode>;
@@ -63,7 +64,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
    
 
 
-    function buildItems() {
+    async function buildItems() {
           const treeMode = Utility.getConfiguration().get<string>("treeMode");
 
           function createConcreteTree(parentNamespace: string, abstractTree: ITestTreeNode): TestNode {
@@ -90,19 +91,25 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     const concreteRoot = createConcreteTree("", tree);
 
     // have original tree for original explorer
-    const generateItemFromNode = (tree: TestNode) => {
+    const generateItemFromNode = async (tree: TestNode) => {
       const _fqn = Utility.getFqnTestName(tree.fullName).replace('+', '.')
-      const treeNode = controller.createTestItem(tree.fullName, tree.name, vscode.Uri.parse(`vscdnte:${_fqn}`))
+
+         const gotoTest = new GotoTest();
+         const symbol = await gotoTest.info(tree)          
+         const treeNode = controller.createTestItem(tree.fullName, tree.name, symbol?.uri)
+         treeNode.range = symbol?.range
+      // const treeNode = controller.createTestItem(tree.fullName, tree.name, vscode.Uri.parse(`vscdnte:${_fqn}`))
+
       controller.testNodesMap.set(treeNode, tree);
       if (tree.children) {
         for (const subTree of tree.children) {
-          treeNode.children.add(generateItemFromNode(subTree))
+          treeNode.children.add(await generateItemFromNode(subTree))
         }
       }
       
       return treeNode
     }
-    const vsTestRoot = generateItemFromNode(concreteRoot)
+    const vsTestRoot = await generateItemFromNode(concreteRoot)
 
       vsTestRoot.children.forEach((sub) => {
         controller.items.add(sub)
@@ -118,12 +125,12 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     controller.items.replace([]);
   }
 
-  function updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
+  async function updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
     controller.items.replace([]);
 
     controller.testNodes = [];
     controller.discoveredTests = [].concat(...results.map((r) => r.testNames));
-    buildItems()
+    await buildItems()
 
   }
 
@@ -173,7 +180,7 @@ export function createTestController(context: vscode.ExtensionContext, testComma
 
     statusBar.discovered(count);
   }
-    function addTestResults(run: vscode.TestRun, results: ITestResult) {
+    async function addTestResults(run: vscode.TestRun, results: ITestResult) {
 
       const fullNamesForTestResults = results.testResults.map((r) => r.fullName);
       // controller.discoveredTests = []
@@ -181,14 +188,14 @@ export function createTestController(context: vscode.ExtensionContext, testComma
       if (results.clearPreviousTestResults) {
           controller.discoveredTests = [...fullNamesForTestResults];
           // controller.testResults = null;
-          buildItems()
+          await buildItems()
           
       } else {
           const newTests = fullNamesForTestResults.filter((r) => controller.discoveredTests.indexOf(r) === -1);
 
           if (newTests.length > 0) {
               controller.discoveredTests.push(...newTests);
-              buildItems()
+              await buildItems()
               
           }
       }

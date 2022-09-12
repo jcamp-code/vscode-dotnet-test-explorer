@@ -6,6 +6,29 @@ import { Utility } from "./utility";
 
 export class GotoTest {
 
+    public async info(test: TestNode) {
+
+        const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+            "vscode.executeWorkspaceSymbolProvider",
+            test.fqn,
+        )
+
+            let symbol: vscode.SymbolInformation;
+
+            try {
+                symbol = this.findTestLocation(symbols, test);
+                return symbol?.location
+
+            } catch (r) {
+                // Logger.Log(r.message);
+                // vscode.window.showWarningMessage(r.message);
+            }
+            return null
+
+    
+    }
+
+
     public go(test: TestNode): void {
 
         AppInsightsClient.sendEvent("gotoTest");
