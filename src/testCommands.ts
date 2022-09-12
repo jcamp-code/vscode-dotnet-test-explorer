@@ -125,16 +125,16 @@ export class TestCommands implements Disposable {
     }
 
     public runAllTests(): void {
-        this.runTestCommand("", false);
+        this.runTestCommand("", false, false);
         AppInsightsClient.sendEvent("runAllTests");
     }
 
-    public runTest(test: TestNode): void {
-        this.runTestByName(test.fqn, !test.isFolder);
+    public runTest(test: TestNode, exclusions?: string[]): void {
+        this.runTestByName(test.fqn, !test.isFolder, exclusions);
     }
 
-    public runTestByName(testName: string, isSingleTest: boolean): void {
-        this.runTestCommand(testName, isSingleTest);
+    public runTestByName(testName: string, isSingleTest: boolean, exclusions?: string[]): void {
+        this.runTestCommand(testName, isSingleTest, false, exclusions);
         AppInsightsClient.sendEvent("runTest");
     }
 
@@ -145,7 +145,7 @@ export class TestCommands implements Disposable {
 
     public rerunLastCommand(): void {
         if (this.lastRunTestContext != null) {
-            this.runTestCommand(this.lastRunTestContext.testName, this.lastRunTestContext.isSingleTest);
+            this.runTestCommand(this.lastRunTestContext.testName, this.lastRunTestContext.isSingleTest, false);
             AppInsightsClient.sendEvent("rerunLastCommand");
         }
     }
@@ -156,7 +156,7 @@ export class TestCommands implements Disposable {
         }
     }
 
-    private async runTestCommand(testName: string, isSingleTest: boolean, debug?: boolean): Promise<void> {
+    private async runTestCommand(testName: string, isSingleTest: boolean, debug: boolean, exclusions?: string[]): Promise<void> {
 
         if (this.isRunning) {
             Logger.Log("Tests already running, ignore request to run tests for " + testName);
@@ -246,7 +246,7 @@ export class TestCommands implements Disposable {
         });
     }
 
-    private runTestCommandForSpecificDirectory(testDirectoryPath: string, testName: string, isSingleTest: boolean, index: number, debug?: boolean): Promise<void> {
+    private runTestCommandForSpecificDirectory(testDirectoryPath: string, testName: string, isSingleTest: boolean, index: number, debug: boolean, exclusions?: string[]): Promise<void> {
 
         const trxTestName = index + ".trx";
 
