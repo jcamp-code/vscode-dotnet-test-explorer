@@ -7,14 +7,11 @@ import { IDiscoverTestsResult } from './testDiscovery'
 import { AppInsightsClient } from './appInsightsClient'
 import { StatusBar } from './statusBar'
 import { TestNode } from './testNode'
-import { ITestResult, TestResult } from './testResult'
+import { ITestResult } from './testResult'
 import { Logger } from './logger'
 import { GotoTest } from './gotoTest'
 
 export interface TestControllerExtended extends vscode.TestController {
-//   testNodesMap: WeakMap<vscode.TestItem, TestNode>
-  // testNodes: TestNode[]
-//   testResults: TestResult[]
   discoveredTests: string[]
 }
 
@@ -29,9 +26,6 @@ export function createTestController(
   ) as TestControllerExtended
 
   // extend the VSC controller with additional properties
-  // controller.testNodesMap = new WeakMap<vscode.TestItem, TestNode>()
-  // controller.testNodes = []
-  // controller.testResults = []
   controller.discoveredTests = []
 
   // https://github.com/microsoft/vscode/blob/b7d5b65a13299083e92bca91be8fa1289e95d5c1/src/vs/workbench/contrib/testing/browser/testing.contribution.ts
@@ -69,7 +63,6 @@ export function createTestController(
       }
       for (const test of abstractTree.tests) {
         const testNode = new TestNode(abstractTree.fullName, test, [])
-        // controller.testNodes.push(testNode)
         children.push(testNode)
       }
       return new TestNode(parentNamespace, abstractTree.name, [], children)
@@ -92,9 +85,6 @@ export function createTestController(
       const symbol = await gotoTest.info(tree)
       const treeNode = controller.createTestItem(tree.fullName, tree.name, symbol?.uri)
       treeNode.range = symbol?.range
-      // const treeNode = controller.createTestItem(tree.fullName, tree.name, vscode.Uri.parse(`vscdnte:${_fqn}`))
-
-     //  controller.testNodesMap.set(treeNode, tree)
       if (tree.children) {
         for (const subTree of tree.children) {
           treeNode.children.add(await generateItemFromNode(subTree))
@@ -117,18 +107,15 @@ export function createTestController(
   async function updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
     controller.items.replace([])
 
-//     controller.testNodes = []
     controller.discoveredTests = [].concat(...results.map((r) => r.testNames))
     await buildItems()
   }
 
   async function addTestResults(run: vscode.TestRun, results: ITestResult) {
     const fullNamesForTestResults = results.testResults.map((r) => r.fullName)
-    // controller.discoveredTests = []
 
     if (results.clearPreviousTestResults) {
       controller.discoveredTests = [...fullNamesForTestResults]
-      // controller.testResults = null;
       await buildItems()
     } else {
       const newTests = fullNamesForTestResults.filter(
@@ -144,8 +131,6 @@ export function createTestController(
     controller.discoveredTests = controller.discoveredTests.sort()
 
     statusBar.discovered(controller.discoveredTests.length)
-
-    // controller.testResults = results.testResults
 
     function searchTestItems(item: vscode.TestItemCollection, name: string) {
       let result = null
@@ -232,7 +217,7 @@ export function createTestController(
 
   controller.createRunProfile('Debug', vscode.TestRunProfileKind.Debug, async (request, token) => {
     const run = controller.createTestRun(request, 'My test run', true)
-    runProfile(run, request, true)
+    await runProfile(run, request, true)
   })
 
   controller.createRunProfile('Watch', vscode.TestRunProfileKind.Run, async (request, token) => {
