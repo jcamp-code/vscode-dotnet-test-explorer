@@ -151,10 +151,11 @@ export function createTestController(
 
         if (item) {
           Logger.Log(`${item.id}: ${result.outcome}`)
-          if (result.outcome === 'Failed') run.failed(item, { message: result.message })
+          if (result.outcome === 'Failed') run.failed(item, { message: result.message }, result.duration)
           else if (result.outcome === 'NotExecuted') run.skipped(item)
-          else if (result.outcome === 'Passed') run.passed(item)
-          else console.log('unexpected value for outcome: ' + result.outcome)
+          else if (result.outcome === 'Passed') run.passed(item, result.duration)
+          else console.log('unexpected value for outcome: ' + result.outcome)          
+          if (result.output) run.appendOutput(result.output, item)
 
           return
         }
