@@ -1,41 +1,38 @@
-import { rmdir } from 'fs/promises'
-import { execFile } from 'child_process'
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
 import * as vscode from 'vscode'
 import { Utility } from './utility'
 import { parseTestName } from './parseTestName'
-import { parseResults } from './testResultsFile'
 import { buildTree, ITestTreeNode, mergeSingleItemTrees } from './buildTree'
 import { TestCommands } from './testCommands'
 import { IDiscoverTestsResult } from './testDiscovery'
-import { basename } from 'path'
-import { AppInsightsClient } from "./appInsightsClient";
+import { AppInsightsClient } from './appInsightsClient'
 import { StatusBar } from './statusBar'
-import { TestNode } from './testNode';
-import { ITestResult, TestResult } from './testResult';
-import { Logger } from './logger';
-import { GotoTest } from './gotoTest';
+import { TestNode } from './testNode'
+import { ITestResult, TestResult } from './testResult'
+import { Logger } from './logger'
+import { GotoTest } from './gotoTest'
 
 export interface TestControllerExtended extends vscode.TestController {
-  testNodesMap: WeakMap<vscode.TestItem, TestNode>;
-  testNodes: TestNode[];
-  testResults: TestResult[];
-  discoveredTests: string[];
-  resultHandler: any;
+//   testNodesMap: WeakMap<vscode.TestItem, TestNode>
+  // testNodes: TestNode[]
+//   testResults: TestResult[]
+  discoveredTests: string[]
 }
 
-export function createTestController(context: vscode.ExtensionContext, testCommands: TestCommands, statusBar: StatusBar): vscode.TestController {
-
-  const controller = vscode.tests.createTestController('dotnet-test-explorer', 'Dot Net Tests') as TestControllerExtended
+export function createTestController(
+  context: vscode.ExtensionContext,
+  testCommands: TestCommands,
+  statusBar: StatusBar
+): vscode.TestController {
+  const controller = vscode.tests.createTestController(
+    'dotnet-test-explorer',
+    'Dot Net Tests'
+  ) as TestControllerExtended
 
   // extend the VSC controller with additional properties
-  controller.testNodesMap = new WeakMap<vscode.TestItem, TestNode>();
-  controller.testNodes = [];
-  controller.testResults = [];
-  controller.discoveredTests = [];
-  controller.resultHandler = null;
+  // controller.testNodesMap = new WeakMap<vscode.TestItem, TestNode>()
+  // controller.testNodes = []
+  // controller.testResults = []
+  controller.discoveredTests = []
 
   // https://github.com/microsoft/vscode/blob/b7d5b65a13299083e92bca91be8fa1289e95d5c1/src/vs/workbench/contrib/testing/browser/testing.contribution.ts
   // https://github.com/microsoft/vscode/blob/c11dabf9ce669f599a18d7485d397834abc1c8e1/src/vs/workbench/api/common/extHostTesting.ts - controller
@@ -58,171 +55,115 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     } catch {}
   }
   context.subscriptions.push(vscode.commands.registerCommand('vscode.revealTest', commandHandler))
-   
-   testCommands.onTestDiscoveryFinished(updateWithDiscoveredTests, controller);
-   testCommands.onTestDiscoveryStarted(updateWithDiscoveringTest, controller);
-   
 
+  testCommands.onTestDiscoveryFinished(updateWithDiscoveredTests, controller)
+  testCommands.onTestDiscoveryStarted(updateWithDiscoveringTest, controller)
 
-    async function buildItems() {
-          const treeMode = Utility.getConfiguration().get<string>("treeMode");
+  async function buildItems() {
+    const treeMode = Utility.getConfiguration().get<string>('treeMode')
 
-          function createConcreteTree(parentNamespace: string, abstractTree: ITestTreeNode): TestNode {
-      const children = [];
+    function createConcreteTree(parentNamespace: string, abstractTree: ITestTreeNode): TestNode {
+      const children = []
       for (const subNamespace of abstractTree.subTrees.values()) {
-          children.push(createConcreteTree(abstractTree.fullName, subNamespace));
+        children.push(createConcreteTree(abstractTree.fullName, subNamespace))
       }
       for (const test of abstractTree.tests) {
-          const testNode = new TestNode(abstractTree.fullName, test, []);
-          controller.testNodes.push(testNode);
-          children.push(testNode);
+        const testNode = new TestNode(abstractTree.fullName, test, [])
+        // controller.testNodes.push(testNode)
+        children.push(testNode)
       }
-      return new TestNode(parentNamespace, abstractTree.name, [], children);
+      return new TestNode(parentNamespace, abstractTree.name, [], children)
     }
 
-          const parsedTestNames = controller.discoveredTests.map(parseTestName);    
-    let tree = buildTree(parsedTestNames);
+    const parsedTestNames = controller.discoveredTests.map(parseTestName)
+    let tree = buildTree(parsedTestNames)
 
-            if (treeMode === "merged") {
-            tree = mergeSingleItemTrees(tree);
-        }
+    if (treeMode === 'merged') {
+      tree = mergeSingleItemTrees(tree)
+    }
 
-
-    const concreteRoot = createConcreteTree("", tree);
+    const concreteRoot = createConcreteTree('', tree)
 
     // have original tree for original explorer
     const generateItemFromNode = async (tree: TestNode) => {
       const _fqn = Utility.getFqnTestName(tree.fullName).replace('+', '.')
 
-         const gotoTest = new GotoTest();
-         const symbol = await gotoTest.info(tree)          
-         const treeNode = controller.createTestItem(tree.fullName, tree.name, symbol?.uri)
-         treeNode.range = symbol?.range
+      const gotoTest = new GotoTest()
+      const symbol = await gotoTest.info(tree)
+      const treeNode = controller.createTestItem(tree.fullName, tree.name, symbol?.uri)
+      treeNode.range = symbol?.range
       // const treeNode = controller.createTestItem(tree.fullName, tree.name, vscode.Uri.parse(`vscdnte:${_fqn}`))
 
-      controller.testNodesMap.set(treeNode, tree);
+     //  controller.testNodesMap.set(treeNode, tree)
       if (tree.children) {
         for (const subTree of tree.children) {
           treeNode.children.add(await generateItemFromNode(subTree))
         }
       }
-      
+
       return treeNode
     }
     const vsTestRoot = await generateItemFromNode(concreteRoot)
 
-      vsTestRoot.children.forEach((sub) => {
-        controller.items.add(sub)
-      })
-        
-  
+    vsTestRoot.children.forEach((sub) => {
+      controller.items.add(sub)
+    })
+  }
 
-    }
-
-   
   function updateWithDiscoveringTest() {
-  
-    controller.items.replace([]);
+    controller.items.replace([])
   }
 
   async function updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
-    controller.items.replace([]);
+    controller.items.replace([])
 
-    controller.testNodes = [];
-    controller.discoveredTests = [].concat(...results.map((r) => r.testNames));
+//     controller.testNodes = []
+    controller.discoveredTests = [].concat(...results.map((r) => r.testNames))
     await buildItems()
-
   }
 
-  function updateWithDiscoveredTestsFirstTry(results: IDiscoverTestsResult[]) {
-    // const parsedTestNames = ...results.map((x) => parseTestName(x.trim()))
-    // const rootTree = mergeSingleItemTrees(buildTree(parsedTestNames));
-    // const rootTree = buildTree(parsedTestNames)
+  async function addTestResults(run: vscode.TestRun, results: ITestResult) {
+    const fullNamesForTestResults = results.testResults.map((r) => r.fullName)
+    // controller.discoveredTests = []
 
-    controller.items.replace([]);
+    if (results.clearPreviousTestResults) {
+      controller.discoveredTests = [...fullNamesForTestResults]
+      // controller.testResults = null;
+      await buildItems()
+    } else {
+      const newTests = fullNamesForTestResults.filter(
+        (r) => controller.discoveredTests.indexOf(r) === -1
+      )
 
-              // convert the tree into tests
-          const generateItemFromNode = (tree: ITestTreeNode) => {
-            const treeNode = controller.createTestItem(tree.fullName, tree.name)
-            // controller.testNodesMap.set(treeNode, tree);
-
-            for (const subTree of tree.subTrees.values()) {
-              treeNode.children.add(generateItemFromNode(subTree))
-            }
-            for (const test of tree.tests) {
-              const _fqn = Utility.getFqnTestName(tree.fullName + '.' + test).replace('+', '.')
-              const childNode = controller.createTestItem(
-                  tree.fullName + '.' + test,
-                  test,
-                  // vscode.Uri.parse(`command:dotnet-test-explorer.newGotoTest`) // doesn't work but need a uri to get icon to show, test extension expects a file / folder uri
-                  vscode.Uri.parse(`vscdnte:${_fqn}`)
-                )
-                // controller.testNodesMap.set(childNode, tree.fullName);
-
-              treeNode.children.add(childNode)
-            }
-
-            return treeNode
-          }
-
-
-    let count = 0
-    results.forEach(element => {      
-      const parsedTestNames = element.testNames.map((x) => parseTestName(x.trim()))
-      const rootTree = buildTree(parsedTestNames)
-      count += parsedTestNames.length
-      const rootNode = generateItemFromNode(rootTree)
-      controller.testNodesMap.set(rootNode, rootTree);
-      rootNode.label = basename(element.folder)
-      controller.items.add(rootNode)
-
-    });
-
-    statusBar.discovered(count);
-  }
-    async function addTestResults(run: vscode.TestRun, results: ITestResult) {
-
-      const fullNamesForTestResults = results.testResults.map((r) => r.fullName);
-      // controller.discoveredTests = []
-
-      if (results.clearPreviousTestResults) {
-          controller.discoveredTests = [...fullNamesForTestResults];
-          // controller.testResults = null;
-          await buildItems()
-          
-      } else {
-          const newTests = fullNamesForTestResults.filter((r) => controller.discoveredTests.indexOf(r) === -1);
-
-          if (newTests.length > 0) {
-              controller.discoveredTests.push(...newTests);
-              await buildItems()
-              
-          }
+      if (newTests.length > 0) {
+        controller.discoveredTests.push(...newTests)
+        await buildItems()
       }
+    }
 
-      controller.discoveredTests = controller.discoveredTests.sort();
+    controller.discoveredTests = controller.discoveredTests.sort()
 
-      statusBar.discovered(controller.discoveredTests.length);
+    statusBar.discovered(controller.discoveredTests.length)
 
-      controller.testResults = results.testResults;
+    // controller.testResults = results.testResults
 
-      function searchTestItems(item: vscode.TestItemCollection, name: string) {
-        let result = null
-        item.forEach(child => {
-          if (child.id === name) result = child
+    function searchTestItems(item: vscode.TestItemCollection, name: string) {
+      let result = null
+      item.forEach((child) => {
+        if (child.id === name) result = child
+      })
+      if (!result) {
+        item.forEach((child) => {
+          if (!result) result = searchTestItems(child.children, name)
         })
-        if (!result) {
-          item.forEach(child => {
-            if (!result) result = searchTestItems(child.children, name)
-          })
       }
-        return result
-      }
+      return result
+    }
 
-      if (controller.testResults) {
-        controller.testResults.forEach(result => {
+    if (results.testResults) {
+      results.testResults.forEach((result) => {
         const item = searchTestItems(controller.items, result.fullName)
-          
+
         if (item) {
           Logger.Log(`${item.id}: ${result.outcome}`)
           if (result.outcome === 'Failed') run.failed(item, { message: result.message })
@@ -232,171 +173,66 @@ export function createTestController(context: vscode.ExtensionContext, testComma
 
           return
         }
-
-        })
-
-      }
-
- statusBar.testRun(results.testResults);
-
+      })
     }
 
-  
+    statusBar.testRun(results.testResults)
+  }
+
   controller.refreshHandler = async (token) => {
-    await testCommands.discoverTests();
-    AppInsightsClient.sendEvent("refreshTestExplorer");
+    await testCommands.discoverTests()
+    AppInsightsClient.sendEvent('refreshTestExplorer')
+  }
+
+  async function runProfile(run: vscode.TestRun, request: vscode.TestRunRequest, debug: boolean) {
+    const createFilterArg = (item: vscode.TestItem, negate: boolean) => {
+      const fullMatch = item.children.size === 0
+      const operator = (negate ? '!' : '') + (fullMatch ? '=' : '~')
+      const fullyQualifiedName = item.id.replaceAll(/\(.*\)/g, '')
+      return `FullyQualifiedName${operator}${fullyQualifiedName}`
+    }
+
+    const excludeFilters = request.exclude.map((item) => createFilterArg(item, true))
+
+    function startChildren(item: vscode.TestItem) {
+      run.started(item)
+      item.children.forEach((child) => {
+        startChildren(child)
+      })
+    }
+    if (request.include) {
+      //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
+      const itemPromises = request.include.map(async (item) => {
+        startChildren(item)
+        const result = await testCommands.runTestCommand(
+          item.id,
+          item.children.size == 0,
+          false,
+          excludeFilters
+        )
+        if (result) await addTestResults(run, result)
+      })
+
+      await Promise.all(itemPromises)
+    } else {
+      controller.items.forEach((child) => {
+        startChildren(child)
+      })
+      const result = await testCommands.runTestCommand('', false, debug, excludeFilters)
+      if (result) await addTestResults(run, result)
+    }
+
+    run.end()
   }
 
   controller.createRunProfile('Run', vscode.TestRunProfileKind.Run, async (request, token) => {
     const run = controller.createTestRun(request, 'My test run', true)
-  
-    const createFilterArg = (item: vscode.TestItem, negate: boolean) => {
-      const fullMatch = item.children.size === 0
-      const operator = (negate ? '!' : '') + (fullMatch ? '=' : '~')
-      const fullyQualifiedName = item.id.replaceAll(/\(.*\)/g, '')
-      return `FullyQualifiedName${operator}${fullyQualifiedName}`
-    }
-
-    const includeFilters = request.include?.map((item) => createFilterArg(item, false))
-    const excludeFilters = request.exclude.map((item) => createFilterArg(item, true))
-//     const joinedFilters = toBeJoined.join('&')
-
-
-    function startChildren(item: vscode.TestItem) {
-      run.started(item)
-      item.children.forEach((child => {
-        startChildren(child)
-      }))
-
-    }
-    if (request.include) {
-    //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
-    const itemPromises =  request.include.map(async (item) => {
-      startChildren(item)
-      const result = await testCommands.runTestCommand(item.id, item.children.size == 0, false, excludeFilters)
-      if (result) await addTestResults(run, result)
-    })
-
-    await Promise.all(itemPromises)
-  } else {
-    controller.items.forEach(child => {
-      startChildren(child)
-    })
-    const result = await testCommands.runTestCommand("", false, false, excludeFilters)
-    if (result) await addTestResults(run, result)
-  }
-
-    run.end()
-
-
-
-//     const filterArgs = joinedFilters.length > 0 ? ['--filter', joinedFilters] : []
-/*
-    try {
-      const env = {
-        ...process.env,
-        DOTNET_CLI_UI_LANGUAGE: 'en',
-        VSTEST_HOST_DEBUG: '0',
-      }
-
-      const output = await new Promise((resolve, reject) =>
-        execFile(
-          'dotnet',
-          ['test', ...filterArgs, ...loggerArgs],
-          {
-            env,
-            cwd: vscode.workspace.workspaceFolders[0].uri.fsPath,
-          },
-          (error, stdOut, stdErr) => {
-            // if (error) reject(error);
-            // else
-            resolve(stdOut)
-          }
-        )
-      )
-
-      const results = await parseResults(resultsFile)
-
-      for (const result of results) {
-        const parsedName = parseTestName(result.fullName)
-        let item = controller.items.get('')
-        for (const segment of parsedName.segments) {
-          const segmentString = parsedName.fullName.substring(0, segment.end)
-          item = item.children.get(segmentString)
-          if (item === undefined) {
-            // TODO: need to unfold folded items
-            console.error('no such test node:', result.fullName, result)
-            console.error('error at:', segmentString)
-          }
-        }
-        if (item === undefined) {
-          console.error('no such test:', result.fullName, result)
-        }
-        if (result.outcome === 'Failed') run.failed(item, { message: result.message })
-        else if (result.outcome === 'NotExecuted') run.skipped(item)
-        else if (result.outcome === 'Passed') run.passed(item)
-        else console.log('unexpected value for outcome: ' + result.outcome)
-      }
-      run.end()
-    } finally {
-      // await unlink(resultsFile);
-      await rmdir(resultsFolder)
-    }
-    */
+    await runProfile(run, request, false)
   })
 
   controller.createRunProfile('Debug', vscode.TestRunProfileKind.Debug, async (request, token) => {
-
-
-        const run = controller.createTestRun(request, 'My test run', true)
-  
-    const createFilterArg = (item: vscode.TestItem, negate: boolean) => {
-      const fullMatch = item.children.size === 0
-      const operator = (negate ? '!' : '') + (fullMatch ? '=' : '~')
-      const fullyQualifiedName = item.id.replaceAll(/\(.*\)/g, '')
-      return `FullyQualifiedName${operator}${fullyQualifiedName}`
-    }
-
-    const includeFilters = request.include?.map((item) => createFilterArg(item, false))
-    const excludeFilters = request.exclude.map((item) => createFilterArg(item, true))
-
-    function startChildren(item: vscode.TestItem) {
-      run.started(item)
-      item.children.forEach((child => {
-        startChildren(child)
-      }))
-
-    }
-    
-    if (request.include) {
-    //async mapping https://stackoverflow.com/questions/40140149/use-async-await-with-array-map
-    const itemPromises =  request.include.map(async (item) => {
-      startChildren(item)
-      const result = await testCommands.runTestCommand(item.id, item.children.size == 0, true)
-      if (result) await addTestResults(run, result)
-    })
-
-    await Promise.all(itemPromises)
-  } else {
-    controller.items.forEach(child => {
-      startChildren(child)
-    })
-    const result = await testCommands.runTestCommand("", false, true)
-    if (result) await addTestResults(run, result)
-  }
-
-    const toBeJoined = [...excludeFilters]
-    if (includeFilters) {
-      toBeJoined.push('(' + includeFilters.join('|') + ')')
-    }
-
-    const joinedFilters = toBeJoined.join('&')
-
-    const filterArgs = joinedFilters.length > 0 ? ['--filter', joinedFilters] : []
-    const resultsFolder = fs.mkdtempSync(path.join(os.tmpdir(), "test-explorer"));
-    const resultsFile = path.join(resultsFolder, 'test-results.trx')
-    const loggerArgs = ['--logger', 'trx;LogFileName=' + resultsFile]
-
+    const run = controller.createTestRun(request, 'My test run', true)
+    runProfile(run, request, true)
   })
 
   controller.createRunProfile('Watch', vscode.TestRunProfileKind.Run, async (request, token) => {
@@ -421,5 +257,5 @@ export function createTestController(context: vscode.ExtensionContext, testComma
     run.end()
   })
 
-  return controller;
+  return controller
 }
