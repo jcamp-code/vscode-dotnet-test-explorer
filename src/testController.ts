@@ -3,8 +3,6 @@ import { Utility } from './utility'
 import { parseTestName } from './parseTestName'
 import { buildTree, ITestTreeNode, mergeSingleItemTrees } from './buildTree'
 import { TestCommands } from './testCommands'
-import { IDiscoverTestsResult } from './testDiscovery'
-import { AppInsightsClient } from './appInsightsClient'
 import { StatusBar } from './statusBar'
 import { TestNode } from './testNode'
 import { ITestResult } from './testResult'
@@ -49,9 +47,6 @@ export function createTestController(
     } catch {}
   }
   context.subscriptions.push(vscode.commands.registerCommand('vscode.revealTest', commandHandler))
-
-  testCommands.onTestDiscoveryFinished(updateWithDiscoveredTests, controller)
-  testCommands.onTestDiscoveryStarted(updateWithDiscoveringTest, controller)
 
   async function buildItems() {
     const treeMode = Utility.getConfiguration().get<string>('treeMode')
@@ -100,17 +95,6 @@ export function createTestController(
     })
   }
 
-  function updateWithDiscoveringTest() {
-    controller.items.replace([])
-  }
-
-  async function updateWithDiscoveredTests(results: IDiscoverTestsResult[]) {
-    controller.items.replace([])
-
-    controller.discoveredTests = [].concat(...results.map((r) => r.testNames))
-    await buildItems()
-  }
-
   async function addTestResults(run: vscode.TestRun, results: ITestResult) {
     const fullNamesForTestResults = results.testResults.map((r) => r.fullName)
 
@@ -151,10 +135,11 @@ export function createTestController(
 
         if (item) {
           Logger.Log(`${item.id}: ${result.outcome}`)
-          if (result.outcome === 'Failed') run.failed(item, { message: result.message }, result.duration)
+          if (result.outcome === 'Failed')
+            run.failed(item, { message: result.message }, result.duration)
           else if (result.outcome === 'NotExecuted') run.skipped(item)
           else if (result.outcome === 'Passed') run.passed(item, result.duration)
-          else console.log('unexpected value for outcome: ' + result.outcome)          
+          else console.log('unexpected value for outcome: ' + result.outcome)
           if (result.output) run.appendOutput(result.output, item)
 
           return
@@ -166,8 +151,11 @@ export function createTestController(
   }
 
   controller.refreshHandler = async (token) => {
-    await testCommands.discoverTests()
-    AppInsightsClient.sendEvent('refreshTestExplorer')
+    controller.items.replace([])
+    const results = await testCommands.discoverTests()
+
+    controller.discoveredTests = [].concat(...results.map((r) => r.testNames))
+    await buildItems()
   }
 
   async function runProfile(run: vscode.TestRun, request: vscode.TestRunRequest, debug: boolean) {

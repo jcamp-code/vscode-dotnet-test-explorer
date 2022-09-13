@@ -75,12 +75,14 @@ export class TestCommands implements Disposable {
                 }
 
                 this.onTestDiscoveryFinishedEmitter.fire(discoveredTests);
+                return discoveredTests
             } catch (error) {
                 this.onTestDiscoveryFinishedEmitter.fire([]);
+                return []
             }
         };
 
-        await runSeqOrAsync();
+        return await runSeqOrAsync();
     }
 
     public async discoverTestsInFolder(dir: string): Promise<IDiscoverTestsResult> {
