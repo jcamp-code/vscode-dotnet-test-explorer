@@ -27,6 +27,22 @@ function getTextContentForTag(parentNode: Node, tagName: string): string {
     return node.length > 0 ? node[0].textContent : "";
 }
 
+function parseDuration(value: string) {
+  const parts = value.split(':')
+  if (parts.length !== 3) return undefined
+  let milliseconds = 0
+  //hours
+  milliseconds = milliseconds + parseInt(parts[0]) * 60 * 60 * 1000
+
+  //minutes
+  milliseconds = milliseconds + parseInt(parts[1]) * 60 * 1000
+
+  //seconds
+  milliseconds = milliseconds + parseFloat(parts[2]) * 1000
+
+  return milliseconds
+}
+
 function parseUnitTestResults(xml: Element): TestResult[] {
     const results: TestResult[] = [];
     const nodes = xml.getElementsByTagName("UnitTestResult");
@@ -34,12 +50,16 @@ function parseUnitTestResults(xml: Element): TestResult[] {
     // TSLint wants to use for-of here, but nodes doesn't support it
     for (let i = 0; i < nodes.length; i++) { // tslint:disable-line
 
-        results.push(new TestResult(
-            getAttributeValue(nodes[i], "testId"),
-            getAttributeValue(nodes[i], "outcome"),
-            getTextContentForTag(nodes[i], "Message"),
-            getTextContentForTag(nodes[i], "StackTrace"),
-        ));
+        results.push(
+          new TestResult(
+            getAttributeValue(nodes[i], 'testId'),
+            getAttributeValue(nodes[i], 'outcome'),
+            getTextContentForTag(nodes[i], 'Message'),
+            getTextContentForTag(nodes[i], 'StackTrace'),
+            parseDuration(getAttributeValue(nodes[i], 'duration')),
+            nodes[i].toString()
+          )
+        )
     }
 
     return results;

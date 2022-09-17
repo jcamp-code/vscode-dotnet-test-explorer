@@ -11,7 +11,6 @@ export class StatusBar {
         testCommand.onTestDiscoveryStarted(this.updateWithDiscoveringTest, this);
         testCommand.onBuildFail(this.updateWithBuildFail, this);
         this.status.command = "dotnet-test-explorer.openPanel";
-        this.discovering();
     }
 
     public discovering() {

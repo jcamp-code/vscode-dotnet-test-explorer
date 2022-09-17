@@ -3,7 +3,6 @@ import * as glob from "glob";
 import * as path from "path";
 import * as vscode from "vscode";
 import { commands, Disposable, Event, EventEmitter } from "vscode";
-import { AppInsightsClient } from "./appInsightsClient";
 import { Executor } from "./executor";
 import { Logger } from "./logger";
 import { TestDirectories } from "./testDirectories";
@@ -12,6 +11,7 @@ import { TestNode } from "./testNode";
 import { ITestResult, TestResult } from "./testResult";
 import { parseResults } from "./testResultsFile";
 import { Utility } from "./utility";
+import * as argv from "minimist"
 
 export interface ITestRunContext {
     testName: string;
@@ -42,7 +42,7 @@ export class TestCommands implements Disposable {
         }
     }
 
-    public discoverTests() {
+    public async discoverTests() {
         this.onTestDiscoveryStartedEmitter.fire("");
 
         this.testDirectories.clearTestsForDirectory();
@@ -74,12 +74,14 @@ export class TestCommands implements Disposable {
                 }
 
                 this.onTestDiscoveryFinishedEmitter.fire(discoveredTests);
+                return discoveredTests
             } catch (error) {
                 this.onTestDiscoveryFinishedEmitter.fire([]);
+                return []
             }
         };
 
-        runSeqOrAsync();
+        return await runSeqOrAsync();
     }
 
     public async discoverTestsInFolder(dir: string): Promise<IDiscoverTestsResult> {
@@ -126,7 +128,6 @@ export class TestCommands implements Disposable {
 
     public runAllTests(): void {
         this.runTestCommand("", false);
-        AppInsightsClient.sendEvent("runAllTests");
     }
 
     public runTest(test: TestNode): void {
@@ -135,18 +136,15 @@ export class TestCommands implements Disposable {
 
     public runTestByName(testName: string, isSingleTest: boolean): void {
         this.runTestCommand(testName, isSingleTest);
-        AppInsightsClient.sendEvent("runTest");
     }
 
     public debugTestByName(testName: string, isSingleTest: boolean): void {
         this.runTestCommand(testName, isSingleTest, true);
-        AppInsightsClient.sendEvent("runTest");
     }
 
     public rerunLastCommand(): void {
         if (this.lastRunTestContext != null) {
             this.runTestCommand(this.lastRunTestContext.testName, this.lastRunTestContext.isSingleTest);
-            AppInsightsClient.sendEvent("rerunLastCommand");
         }
     }
 
@@ -156,7 +154,7 @@ export class TestCommands implements Disposable {
         }
     }
 
-    private async runTestCommand(testName: string, isSingleTest: boolean, debug?: boolean): Promise<void> {
+    public async runTestCommand(testName: string, isSingleTest: boolean, debug?: boolean, exclusions?: string[]): Promise<any> {
 
         if (this.isRunning) {
             Logger.Log("Tests already running, ignore request to run tests for " + testName);
@@ -186,10 +184,10 @@ export class TestCommands implements Disposable {
 
         try {
             if (Utility.runInParallel) {
-                await Promise.all(testDirectories.map(async (dir, i) => this.runTestCommandForSpecificDirectory(dir, testName, isSingleTest, i, debug)));
+                await Promise.all(testDirectories.map(async (dir, i) => this.runTestCommandForSpecificDirectory(dir, testName, isSingleTest, i, debug, exclusions)));
             } else {
                 for (let i = 0; i < testDirectories.length; i++) {
-                    await this.runTestCommandForSpecificDirectory(testDirectories[i], testName, isSingleTest, i, debug);
+                    await this.runTestCommandForSpecificDirectory(testDirectories[i], testName, isSingleTest, i, debug, exclusions);
                 }
             }
             const globPromise = new Promise<string[]>((resolve, reject) =>
@@ -203,6 +201,8 @@ export class TestCommands implements Disposable {
                 allTestResults.push(...testResults);
             }
             this.sendNewTestResults({ clearPreviousTestResults: testName === "", testResults: allTestResults });
+            this.isRunning = false;
+            return { clearPreviousTestResults: testName === "", testResults: allTestResults }
         } catch (err) {
             Logger.Log(`Error while executing test command: ${err}`);
             if (err.message === "Build command failed") {
@@ -246,22 +246,42 @@ export class TestCommands implements Disposable {
         });
     }
 
-    private runTestCommandForSpecificDirectory(testDirectoryPath: string, testName: string, isSingleTest: boolean, index: number, debug?: boolean): Promise<void> {
+    private runTestCommandForSpecificDirectory(testDirectoryPath: string, testName: string, isSingleTest: boolean, index: number, debug: boolean, exclusions?: string[]): Promise<void> {
 
         const trxTestName = index + ".trx";
 
         return new Promise((resolve, reject) => {
-            const testResultFile = path.join(this.testResultsFolder, trxTestName);
-            let command = `dotnet test${Utility.additionalArgumentsOption} --no-build --logger \"trx;LogFileName=${testResultFile}\"`;
 
+            const filters: string[]  = []
             if (testName && testName.length) {
                 if (isSingleTest) {
-                    command = command + ` --filter "FullyQualifiedName=${testName.replace(/\(.*\)/g, "")}"`;
+                    filters.push (`FullyQualifiedName=${testName.replace(/\(.*\)/g, "")}`)
                 } else {
-                    command = command + ` --filter "FullyQualifiedName~${testName.replace(/\(.*\)/g, "")}"`;
+                    filters.push(`FullyQualifiedName~${testName.replace(/\(.*\)/g, "")}`)                    
                 }
             }
+            if (exclusions) filters.push(...exclusions)
 
+
+            let options = Utility.additionalArgumentsOption ?? ''
+            const reg = /(?:--filter ".*")|(?:--filter .[^\s]*)/gm
+            const filterArg = reg.exec(options)
+
+            if (filterArg) {
+                filters.push(filterArg[0].replace('--filter', '').trim())
+                options = options.replace(reg, '').trim()
+            }
+            if (options) options = ' ' + options
+
+            const testResultFile = path.join(this.testResultsFolder, trxTestName);
+            let command = `dotnet test${options} --no-build --logger \"trx;LogFileName=${testResultFile}\"`;
+
+            if (filters) {
+                const joinedFilters = filters.join('&')
+                const filterArgs = `--filter "${joinedFilters}"`
+                command = `${command} ${filterArgs}`
+            }
+            
             this.runBuildCommandForSpecificDirectory(testDirectoryPath)
                 .then(() => {
                     Logger.Log(`Executing ${command} in ${testDirectoryPath}`);
