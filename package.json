@@ -1,8 +1,8 @@
 {
-  "name": "jcamp-dotnet-test-explorer",
+  "name": "dotnet-test-provider-explorer",
   "displayName": ".NET Test Provider / Explorer",
   "description": "Test Provider / Explorer for .NET (MSTest, xUnit, NUnit)",
-  "version": "0.7.8-tomas-preview-1",
+  "version": "0.8.0",
   "publisher": "jcamp",
   "license": "MIT",
   "icon": "testexplorer_dark.png",
