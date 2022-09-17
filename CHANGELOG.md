@@ -1,3 +1,6 @@
+## 0.8.1 (2022-09-17)
+* Changed default options to use VS Code Testing and disable CodeLens (provided by OmniSharp now)
+
 ## 0.8.0 (2022-09-17)
 * Added experimental work on VS Code Testing Integration
 * Fixed tree mode on newer VS Code versions

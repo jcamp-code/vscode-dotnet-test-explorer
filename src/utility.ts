@@ -69,14 +69,14 @@ export class Utility {
         const configuration = Utility.getConfiguration();
         const osx = platform() === "darwin";
 
-        Utility.showCodeLens = configuration.get<boolean>("showCodeLens", true);
+        Utility.showCodeLens = configuration.get<boolean>("showCodeLens", false);
         Utility.failed = Utility.getLensText(configuration, "codeLensFailed", "\u274c"); // Cross Mark
         Utility.passed = Utility.getLensText(configuration, "codeLensPassed", osx ? "\u2705" : "\u2714"); // White Heavy Check Mark / Heavy Check Mark
         Utility.skipped = Utility.getLensText(configuration, "codeLensSkipped", "\u26a0"); // Warning
         Utility.autoExpandTree = configuration.get<boolean>("autoExpandTree", false);
         Utility.skipBuild = Utility.additionalArgumentsOption.indexOf("--no-build") > -1;
         Utility.runInParallel = configuration.get<boolean>("runInParallel", false);
-        const browser = configuration.get<string>("testBrowser", "original")
+        const browser = configuration.get<string>("testBrowser", "vscode")
         Utility.useOriginalBrowser = browser === 'original' || browser === 'both'
         Utility.useVscodeBrowser = browser === 'vscode' || browser === 'both'
 

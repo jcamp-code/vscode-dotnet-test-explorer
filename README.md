@@ -1,6 +1,12 @@
 
 # .NET Test Provider / Explorer
 
+## Future use
+
+Note that this extension will eventually be deprecated once OmniSharp includes built in test API.  See the mention of this here: https://github.com/OmniSharp/omnisharp-vscode/pull/5054
+
+I needed it for use now, so just put it together to suit my needs until OmniSharp has it integrated.
+
 ## Features
 
 * Test Provider and Explorer for .NET
@@ -12,6 +18,8 @@
 ## Notes
 
 I didn't see evidence the original version was being maintained any longer and I really wanted to add VS Code Test Integration.  I'm not quite ready to totally remove the old UI code just yet, so it is there.  
+
+Also note that the source code linking doesn't show up until OmniSharp is finished initializing, so you will need to refresh the test explorer once OmniSharp is done so it fully integrates.
 
 ## Prerequisites
 

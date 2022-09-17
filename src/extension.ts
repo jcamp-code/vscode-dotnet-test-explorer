@@ -40,7 +40,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     if (Utility.useVscodeBrowser) {
         const controller = createTestController(context, testCommands, statusBar)
-        await controller.refreshHandler(null)
+        if (vscode.extensions.getExtension('ms-dotnettools.csharp')) {
+            await controller.refreshHandler(null)
+        }
         context.subscriptions.push(controller);
     }
 

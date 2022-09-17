@@ -2,7 +2,7 @@
   "name": "dotnet-test-provider-explorer",
   "displayName": ".NET Test Provider / Explorer",
   "description": "Test Provider / Explorer for .NET (MSTest, xUnit, NUnit)",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "publisher": "jcamp",
   "license": "MIT",
   "icon": "testexplorer_dark.png",
@@ -204,7 +204,7 @@
         },
         "dotnet-test-explorer.showCodeLens": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Determines whether to show the CodeLens test status or not."
         },
         "dotnet-test-explorer.codeLensFailed": {
@@ -264,7 +264,7 @@
         },
         "dotnet-test-explorer.testBrowser": {
           "type": "string",
-          "default": "original",
+          "default": "vscode",
           "enum": [
             "original",
             "vscode",

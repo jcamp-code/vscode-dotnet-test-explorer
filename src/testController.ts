@@ -47,6 +47,8 @@ export function createTestController(
     } catch {}
   }
   context.subscriptions.push(vscode.commands.registerCommand('vscode.revealTest', commandHandler))
+  
+  const gotoTest = new GotoTest()
 
   async function buildItems() {
     const treeMode = Utility.getConfiguration().get<string>('treeMode')
@@ -76,7 +78,6 @@ export function createTestController(
     const generateItemFromNode = async (tree: TestNode) => {
       const _fqn = Utility.getFqnTestName(tree.fullName).replace('+', '.')
 
-      const gotoTest = new GotoTest()
       const symbol = await gotoTest.info(tree)
       const treeNode = controller.createTestItem(tree.fullName, tree.name, symbol?.uri)
       treeNode.range = symbol?.range
