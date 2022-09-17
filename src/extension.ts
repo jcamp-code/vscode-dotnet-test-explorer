@@ -1,8 +1,6 @@
 "use strict";
 
 import * as vscode from "vscode";
-import { AppInsights } from "./appInsights";
-import { AppInsightsClient } from "./appInsightsClient";
 import { DotnetTestExplorer } from "./dotnetTestExplorer";
 import { Executor } from "./executor";
 import { FindTestInContext } from "./findTestInContext";
@@ -28,7 +26,6 @@ export async function activate(context: vscode.ExtensionContext) {
     const statusBar = new StatusBar(testCommands);
     const watch = new Watch(testCommands, testDirectories);
     const leftClickTest = new LeftClickTest();
-    const appInsights = new AppInsights(testCommands, testDirectories);
 
     Logger.Log("Starting extension");
 
@@ -46,7 +43,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const dotnetTestExplorer = new DotnetTestExplorer(context, testCommands, statusBar);
     vscode.window.registerTreeDataProvider("dotnetTestExplorer", dotnetTestExplorer);
-    AppInsightsClient.sendEvent("loadExtension");
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
         if (!e.affectsConfiguration("dotnet-test-explorer")) { return; }

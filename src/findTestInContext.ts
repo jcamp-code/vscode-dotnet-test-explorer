@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import { SymbolKind } from "vscode";
-import { AppInsightsClient } from "./appInsightsClient";
 import { ITestSymbol, Symbols } from "./symbols";
 import { ITestRunContext } from "./testCommands";
 
@@ -8,7 +7,6 @@ export class FindTestInContext {
 
     public async find(doc: vscode.TextDocument, position: vscode.Position): Promise<ITestRunContext> {
 
-        AppInsightsClient.sendEvent("findTestInContext");
 
         return Symbols.getSymbols(doc.uri, true).then( (documentSymbols: ITestSymbol[]) => {
 

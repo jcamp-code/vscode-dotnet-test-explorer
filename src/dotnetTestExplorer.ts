@@ -1,7 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import { TreeDataProvider, TreeItem } from "vscode";
-import { AppInsightsClient } from "./appInsightsClient";
 import { buildTree, ITestTreeNode, mergeSingleItemTrees } from "./buildTree";
 import { Logger } from "./logger";
 import { parseTestName } from "./parseTestName";
@@ -40,8 +39,6 @@ export class DotnetTestExplorer implements TreeDataProvider<TestNode> {
      */
     public async refreshTestExplorer() {
         await this.testCommands.discoverTests();
-
-        AppInsightsClient.sendEvent("refreshTestExplorer");
     }
 
     public getTreeItem(element: TestNode): TreeItem {

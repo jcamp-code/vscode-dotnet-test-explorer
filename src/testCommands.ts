@@ -3,7 +3,6 @@ import * as glob from "glob";
 import * as path from "path";
 import * as vscode from "vscode";
 import { commands, Disposable, Event, EventEmitter } from "vscode";
-import { AppInsightsClient } from "./appInsightsClient";
 import { Executor } from "./executor";
 import { Logger } from "./logger";
 import { TestDirectories } from "./testDirectories";
@@ -129,7 +128,6 @@ export class TestCommands implements Disposable {
 
     public runAllTests(): void {
         this.runTestCommand("", false);
-        AppInsightsClient.sendEvent("runAllTests");
     }
 
     public runTest(test: TestNode): void {
@@ -138,18 +136,15 @@ export class TestCommands implements Disposable {
 
     public runTestByName(testName: string, isSingleTest: boolean): void {
         this.runTestCommand(testName, isSingleTest);
-        AppInsightsClient.sendEvent("runTest");
     }
 
     public debugTestByName(testName: string, isSingleTest: boolean): void {
         this.runTestCommand(testName, isSingleTest, true);
-        AppInsightsClient.sendEvent("runTest");
     }
 
     public rerunLastCommand(): void {
         if (this.lastRunTestContext != null) {
             this.runTestCommand(this.lastRunTestContext.testName, this.lastRunTestContext.isSingleTest);
-            AppInsightsClient.sendEvent("rerunLastCommand");
         }
     }
 
