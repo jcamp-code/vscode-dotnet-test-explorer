@@ -1,3 +1,8 @@
+## 0.8.0 (2022-09-17)
+* Added experimental work on VS Code Testing Integration
+* Fixed tree mode on newer VS Code versions
+* Removed telemetry
+
 ## 0.7.7 (2021-09-09)
 * [#333](https://github.com/formulahendry/vscode-dotnet-test-explorer/pull/333) : Support localized strings when parsing test output 
 

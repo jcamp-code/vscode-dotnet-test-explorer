@@ -1,6 +1,5 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import { AppInsightsClient } from "./appInsightsClient";
 import { Executor } from "./executor";
 import { Logger } from "./logger";
 import { TestCommands } from "./testCommands";
@@ -15,7 +14,8 @@ export class Watch {
     constructor(
         private testCommands: TestCommands,
         private testDirectories: TestDirectories) {
-        if (Utility.getConfiguration().get<boolean>("autoWatch")) {
+        // without original browser, there is nowhere for this to send test results to.
+        if (Utility.useOriginalBrowser && Utility.getConfiguration().get<boolean>("autoWatch")) {
 
             this.testCommands.onTestDiscoveryFinished(this.setupWatcherForAllDirectories, this);
         }
@@ -40,7 +40,6 @@ export class Watch {
 
         const trxPath = path.join(this.testCommands.testResultFolder, `autoWatch${index}.trx`);
 
-        AppInsightsClient.sendEvent("runWatchCommand");
         const command = `dotnet watch test ${Utility.additionalArgumentsOption}`
             + ` --verbosity:quiet` // be less verbose to avoid false positives when parsing output
             + ` --logger "trx;LogFileName=${trxPath}"`;

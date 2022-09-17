@@ -1,14 +1,34 @@
 import * as vscode from "vscode";
-import { AppInsightsClient } from "./appInsightsClient";
 import { Logger } from "./logger";
 import { TestNode } from "./testNode";
 import { Utility } from "./utility";
 
 export class GotoTest {
 
-    public go(test: TestNode): void {
+    public async info(test: TestNode) {
 
-        AppInsightsClient.sendEvent("gotoTest");
+        const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+            "vscode.executeWorkspaceSymbolProvider",
+            test.fqn,
+        )
+
+            let symbol: vscode.SymbolInformation;
+
+            try {
+                symbol = this.findTestLocation(symbols, test);
+                return symbol?.location
+
+            } catch (r) {
+                // Logger.Log(r.message);
+                // vscode.window.showWarningMessage(r.message);
+            }
+            return null
+
+    
+    }
+
+
+    public go(test: TestNode): void {
 
         const symbolInformation = vscode.commands.executeCommand<vscode.SymbolInformation[]>(
             "vscode.executeWorkspaceSymbolProvider",

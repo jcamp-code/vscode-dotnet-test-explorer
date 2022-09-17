@@ -1,8 +1,8 @@
 {
-    "dotnet-test-explorer.useTreeView": true,
-    "dotnet-test-explorer.testArguments": "--filter Category!=Integration",
-    "dotnet-test-explorer.autoWatch": true,
-    "dotnet-test-explorer.runInParallel": true,
-    "dotnet-test-explorer.testProjectPath": "XunitTests.csproj",
-    "dotnet-test-explorer.treeMode": "merged",
+  "dotnet-test-explorer.testBrowser": "vscode",
+  "dotnet-test-explorer.testArguments": "--filter Category!=Integration",
+  "dotnet-test-explorer.autoWatch": false,
+  "dotnet-test-explorer.runInParallel": true,
+  "dotnet-test-explorer.testProjectPath": "XunitTests.csproj",
+  "dotnet-test-explorer.treeMode": "merged"
 }
