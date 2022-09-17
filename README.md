@@ -1,23 +1,36 @@
-[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/vscode-dotnet-test-explorer/Lobby)
 
-# .NET Core Test Explorer
+# .NET Test Provider / Explorer
 
 ## Features
 
-* Test Explorer for .NET Core
+* Test Provider and Explorer for .NET
+* Based off of the original [.NET Core Test Explorer](https://github.com/formulahendry/vscode-dotnet-test-explorer)
+* Added experimental support for VS Code Test Integration, inspired by work started by [@GeorchW](https://github.com/GeorchW) on this [pull request #353](https://github.com/formulahendry/vscode-dotnet-test-explorer/pull/353)
+* Also implemented the tree fix here [pull request #369](https://github.com/formulahendry/vscode-dotnet-test-explorer/pull/369)
+* Removed telemetry
+
+## Notes
+
+I didn't see evidence the original version was being maintained any longer and I really wanted to add VS Code Test Integration.  I'm not quite ready to totally remove the old UI code just yet, so it is there.  
 
 ## Prerequisites
 
 * [.NET Core](https://www.microsoft.com/net/core) is installed
 * NUnit and MSTest requires a dotnet [sdk](https://www.microsoft.com/net/download) version of >= 2.2.104.
 
-## New in 0.7.7
+## New in 0.8.0
 
-* Better support for running the dotnet CLI in other language than English.
+* Tree in original browser works properly in VS Code 1.70 or later
+* VS Code Test Integration (Run, Debug, Go to Code)
+* Removed telemetry
+
+## To-do
+* Watching does not work in new UI
+* Provide option to not discover tests upon startup in new UI
 
 ## Usage
 
-Open a .NET Core test project, or set `dotnet-test-explorer.testProjectPath` to the folder path of .NET Core test project. Then, you will see all the tests in Test Explorer. More information on how to set the testProjectPath can be found below under Settings.
+Open a .NET test project, or set `dotnet-test-explorer.testProjectPath` to the folder path of .NET test project. Then, you will see all the tests in Test Explorer. More information on how to set the testProjectPath can be found below under Settings.
 
 ## Settings
 
@@ -94,22 +107,13 @@ See [#56](https://github.com/formulahendry/vscode-dotnet-test-explorer/issues/56
 ##### Project discovery with UNC Paths doesn't work
 See [#179](https://github.com/formulahendry/vscode-dotnet-test-explorer/issues/179)
 
-## Telemetry data
-
-By default, anonymous telemetry data collection is turned on to understand user behavior to improve this extension. To disable it, update the settings.json as below:
-```json
-{
-    "dotnet-test-explorer.enableTelemetry": false
-}
-```
-
 ## Change Log
 
 See Change Log [here](CHANGELOG.md)
 
 ## Issues
 
-If you find any bug or have any suggestion/feature request, please submit the [issues](https://github.com/formulahendry/vscode-dotnet-test-explorer/issues) to the GitHub Repo.
+If you find any bug or have any suggestion/feature request, please submit the [issues](https://github.com/jcamp-code/vscode-dotnet-test-explorer/issues) to the GitHub Repo.
 
 ## ❤️ Contributors
 

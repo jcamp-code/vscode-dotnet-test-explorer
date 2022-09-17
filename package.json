@@ -1,9 +1,9 @@
 {
-  "name": "dotnet-test-explorer",
-  "displayName": ".NET Core Test Explorer",
-  "description": "Test Explorer for .NET Core (MSTest, xUnit, NUnit)",
+  "name": "jcamp-dotnet-test-explorer",
+  "displayName": ".NET Test Provider / Explorer",
+  "description": "Test Provider / Explorer for .NET (MSTest, xUnit, NUnit)",
   "version": "0.7.8-tomas-preview-1",
-  "publisher": "formulahendry",
+  "publisher": "jcamp",
   "license": "MIT",
   "icon": "testexplorer_dark.png",
   "engines": {
@@ -20,13 +20,12 @@
     "F#"
   ],
   "bugs": {
-    "url": "https://github.com/formulahendry/vscode-dotnet-test-explorer/issues",
-    "email": "formulahendry@gmail.com"
+    "url": "https://github.com/jcamp-code/vscode-dotnet-test-explorer/issues"
   },
-  "homepage": "https://github.com/formulahendry/vscode-dotnet-test-explorer/blob/master/README.md",
+  "homepage": "https://github.com/jcamp-code/vscode-dotnet-test-explorer/blob/master/README.md",
   "repository": {
     "type": "git",
-    "url": "https://github.com/formulahendry/vscode-dotnet-test-explorer.git"
+    "url": "https://github.com/jcamp-code/vscode-dotnet-test-explorer.git"
   },
   "activationEvents": [
     "workspaceContains:**/*.csproj",
