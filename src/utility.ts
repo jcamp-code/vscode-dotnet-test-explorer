@@ -7,6 +7,8 @@ export class Utility {
 
     public static skipBuild: boolean;
     public static runInParallel: boolean;
+    public static useOriginalBrowser: boolean;
+    public static useVscodeBrowser: boolean;
 
     public static get codeLensEnabled(): boolean {
         return Utility.showCodeLens;
@@ -74,6 +76,10 @@ export class Utility {
         Utility.autoExpandTree = configuration.get<boolean>("autoExpandTree", false);
         Utility.skipBuild = Utility.additionalArgumentsOption.indexOf("--no-build") > -1;
         Utility.runInParallel = configuration.get<boolean>("runInParallel", false);
+        const browser = configuration.get<string>("testBrowser", "original")
+        Utility.useOriginalBrowser = browser === 'original' || browser === 'both'
+        Utility.useVscodeBrowser = browser === 'vscode' || browser === 'both'
+
     }
 
     /**

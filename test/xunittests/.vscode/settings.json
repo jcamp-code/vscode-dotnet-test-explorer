@@ -1,5 +1,5 @@
 {
-  "dotnet-test-explorer.useTreeView": true,
+  "dotnet-test-explorer.testBrowser": "vscode",
   "dotnet-test-explorer.testArguments": "--filter Category!=Integration",
   "dotnet-test-explorer.autoWatch": false,
   "dotnet-test-explorer.runInParallel": true,

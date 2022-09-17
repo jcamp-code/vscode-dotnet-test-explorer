@@ -14,7 +14,8 @@ export class Watch {
     constructor(
         private testCommands: TestCommands,
         private testDirectories: TestDirectories) {
-        if (Utility.getConfiguration().get<boolean>("autoWatch")) {
+        // without original browser, there is nowhere for this to send test results to.
+        if (Utility.useOriginalBrowser && Utility.getConfiguration().get<boolean>("autoWatch")) {
 
             this.testCommands.onTestDiscoveryFinished(this.setupWatcherForAllDirectories, this);
         }

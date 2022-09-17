@@ -151,11 +151,13 @@ export function createTestController(
   }
 
   controller.refreshHandler = async (token) => {
+    statusBar.discovering()
     controller.items.replace([])
     const results = await testCommands.discoverTests()
 
     controller.discoveredTests = [].concat(...results.map((r) => r.testNames))
     await buildItems()
+    statusBar.discovered(controller.discoveredTests.length)
   }
 
   async function runProfile(run: vscode.TestRun, request: vscode.TestRunRequest, debug: boolean) {
@@ -209,6 +211,8 @@ export function createTestController(
     await runProfile(run, request, true)
   })
 
+  /*
+  Haven't come up with a great way to integrate this.
   controller.createRunProfile('Watch', vscode.TestRunProfileKind.Run, async (request, token) => {
     const run = controller.createTestRun(request, 'My test run', true)
     const wait = () => new Promise((resolve) => setTimeout(resolve, 100))
@@ -230,6 +234,7 @@ export function createTestController(
     }
     run.end()
   })
+  */
 
   return controller
 }
