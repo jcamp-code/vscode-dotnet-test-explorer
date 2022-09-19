@@ -19,6 +19,10 @@ import { Watch } from "./watch";
 
 export async function activate(context: vscode.ExtensionContext) {
     
+    context.subscriptions.push(vscode.commands.registerCommand("dotnet-test-explorer.openPanel", () => {
+        vscode.commands.executeCommand("workbench.view.extension.test");
+    }));
+
     Utility.updateCache();
 
     const testDirectories = new TestDirectories();
@@ -81,10 +85,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand("dotnet-test-explorer.showLog", () => {
         Logger.Show();
-    }));
-
-    context.subscriptions.push(vscode.commands.registerCommand("dotnet-test-explorer.openPanel", () => {
-        vscode.commands.executeCommand("workbench.view.extension.test");
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand("dotnet-test-explorer.stop", () => {
